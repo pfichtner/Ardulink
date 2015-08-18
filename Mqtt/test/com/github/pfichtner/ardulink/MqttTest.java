@@ -2,18 +2,20 @@ package com.github.pfichtner.ardulink;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.zu.ardulink.ConnectionContactImpl;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.connection.Connection;
 import org.zu.ardulink.connection.ConnectionContact;
@@ -23,10 +25,49 @@ public class MqttTest {
 
 	private static final String LINKNAME = "testlink";
 
+	private final List<String> published = new ArrayList<String>();
+
 	private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-	private final Connection connection = createConnection(outputStream);
+	private final ConnectionContact connectionContact = new ConnectionContactImpl(
+			null);
+	private final Connection connection = createConnection(outputStream,
+			connectionContact);
 	private final Link link = Link.createInstance(LINKNAME, connection);
-	private final MqttClient mqttClient = new MqttClient(link);
+	private final MqttClient mqttClient = new MqttClient(link) {
+		protected void publish(String message) {
+			published.add(message);
+		};
+	};
+	{
+		try {
+			Field field = connectionContact.getClass().getDeclaredField("link");
+			field.setAccessible(true);
+			field.set(connectionContact, link);
+		} catch (NoSuchFieldException e) {
+			throw new RuntimeException(e);
+		} catch (SecurityException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	{
+		try {
+			Field field = link.getClass().getDeclaredField("connectionContact");
+			field.setAccessible(true);
+			field.set(link, connectionContact);
+		} catch (NoSuchFieldException e) {
+			throw new RuntimeException(e);
+		} catch (SecurityException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	@Before
 	public void setup() {
@@ -39,10 +80,9 @@ public class MqttTest {
 		Link.destroyInstance(LINKNAME);
 	}
 
-	private static Connection createConnection(final OutputStream outputStream) {
-		ConnectionContact connectionContact = mock(ConnectionContact.class);
-		AbstractSerialConnection connection = new AbstractSerialConnection(
-				connectionContact) {
+	private static Connection createConnection(final OutputStream outputStream,
+			ConnectionContact connectionContact) {
+		return new AbstractSerialConnection(connectionContact) {
 
 			{
 				setOutputStream(outputStream);
@@ -65,8 +105,6 @@ public class MqttTest {
 				return isConnected();
 			}
 		};
-		connection.setConnectionContact(connectionContact);
-		return connection;
 	}
 
 	@Test
@@ -108,10 +146,25 @@ public class MqttTest {
 	}
 
 	@Test
-	@Ignore
 	public void doesPublishDigitalPinChanges() {
-		mqttClient.publishDigitalPinOnStateChanges(0);
-		// verify(connection).addDigitalReadChangeListener(null);
+		int pin = 0;
+		int value = 1;
+		mqttClient.publishDigitalPinOnStateChanges(pin);
+		int[] message = toCodepoints("alp://dred/" + pin + "/" + value);
+		connectionContact.parseInput(anyId(), message.length, message);
+		assertThat(published, is(Collections.singletonList(pin + "=" + value)));
+	}
+
+	private String anyId() {
+		return "id";
+	}
+
+	private int[] toCodepoints(String message) {
+		int[] codepoints = new int[message.length()];
+		for (int i = 0; i < message.length(); i++) {
+			codepoints[i] = message.codePointAt(i);
+		}
+		return codepoints;
 	}
 
 	private MqttMessage mqttMessage(String message) {
