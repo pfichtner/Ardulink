@@ -1,11 +1,13 @@
 package com.github.pfichtner.ardulink;
 
-import static java.lang.Boolean.TRUE;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doReturn;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.After;
@@ -14,11 +16,16 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.connection.Connection;
+import org.zu.ardulink.connection.ConnectionContact;
+import org.zu.ardulink.connection.serial.AbstractSerialConnection;
 
 public class MqttTest {
 
-	private final Connection connection = createConnection();
-	private final Link link = Link.createInstance("testlink", connection);
+	private static final String LINKNAME = "testlink";
+
+	private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+	private final Connection connection = createConnection(outputStream);
+	private final Link link = Link.createInstance(LINKNAME, connection);
 	private final MqttClient mqttClient = new MqttClient(link);
 
 	@Before
@@ -29,37 +36,58 @@ public class MqttTest {
 	@After
 	public void tearDown() {
 		link.disconnect();
-		Link.destroyInstance("testlink");
+		Link.destroyInstance(LINKNAME);
 	}
 
-	private static Connection createConnection() {
-		Connection connection = mock(Connection.class);
-		doReturn(TRUE).when(connection).isConnected();
+	private static Connection createConnection(final OutputStream outputStream) {
+		ConnectionContact connectionContact = mock(ConnectionContact.class);
+		AbstractSerialConnection connection = new AbstractSerialConnection(
+				connectionContact) {
+
+			{
+				setOutputStream(outputStream);
+			}
+
+			@Override
+			public List<String> getPortList() {
+				throw new IllegalStateException();
+			}
+
+			@Override
+			public boolean disconnect() {
+				setConnected(false);
+				return isConnected();
+			}
+
+			@Override
+			public boolean connect(Object... params) {
+				setConnected(true);
+				return isConnected();
+			}
+		};
+		connection.setConnectionContact(connectionContact);
 		return connection;
 	}
 
 	@Test
-	public void canPowerOnDigitalPin() {
+	public void canPowerOnDigitalPin() throws IOException {
 		mqttClient.messageArrived("home/devices/ardulink/digital0/value/set",
 				mqttMessage("true"));
-		verify(connection).writeSerial("alp://ppsw/0/1\n");
-		// verifyNoMoreInteractions(connection);
+		assertThat(getMessage(), is("alp://ppsw/0/1\n"));
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
 		mqttClient.messageArrived("home/devices/ardulink/invalidTopic",
 				mqttMessage("true"));
-		verify(connection, never()).writeSerial(anyString());
-		// verifyNoMoreInteractions(connection);
+		assertThat(getMessage(), is(""));
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
 		mqttClient.messageArrived("home/devices/ardulink/digital0/value/set",
 				mqttMessage("xxxxxxxxxxxxxxxx"));
-		verify(connection).writeSerial("alp://ppsw/0/0\n");
-		// verifyNoMoreInteractions(connection);
+		assertThat(getMessage(), is("alp://ppsw/0/0\n"));
 	}
 
 	@Test
@@ -68,9 +96,7 @@ public class MqttTest {
 		String value = "127";
 		mqttClient.messageArrived("home/devices/ardulink/analog" + pin
 				+ "/value/set", mqttMessage(value));
-		verify(connection)
-				.writeSerial("alp://ppin/" + pin + "/" + value + "\n");
-		// verifyNoMoreInteractions(connection);
+		assertThat(getMessage(), is("alp://ppin/" + pin + "/" + value + "\n"));
 	}
 
 	@Test
@@ -79,7 +105,6 @@ public class MqttTest {
 		String value = "NaN";
 		mqttClient.messageArrived("home/devices/ardulink/analog" + pin
 				+ "/value/set", mqttMessage(value));
-		// verifyNoMoreInteractions(connection);
 	}
 
 	@Test
@@ -87,12 +112,19 @@ public class MqttTest {
 	public void doesPublishDigitalPinChanges() {
 		mqttClient.publishDigitalPinOnStateChanges(0);
 		// verify(connection).addDigitalReadChangeListener(null);
-		verify(connection).writeSerial("");
-		// verifyNoMoreInteractions(connection);
 	}
 
 	private MqttMessage mqttMessage(String message) {
 		return new MqttMessage(message.getBytes());
+	}
+
+	private String getMessage() {
+		try {
+			outputStream.close();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return new String(outputStream.toByteArray());
 	}
 
 }
