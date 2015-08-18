@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.zu.ardulink.Link;
+import org.zu.ardulink.event.DigitalReadChangeListener;
 
 public class MqttClient {
 
@@ -69,6 +70,11 @@ public class MqttClient {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	public void publishDigitalPinOnStateChanges(int pin) {
+		DigitalReadChangeListener listener = null;
+		link.addDigitalReadChangeListener(listener);
 	}
 
 }

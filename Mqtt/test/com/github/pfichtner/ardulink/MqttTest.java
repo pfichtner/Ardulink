@@ -1,56 +1,94 @@
 package com.github.pfichtner.ardulink;
 
+import static java.lang.Boolean.TRUE;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.zu.ardulink.protocol.IProtocol.POWER_HIGH;
-import static org.zu.ardulink.protocol.IProtocol.POWER_LOW;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.zu.ardulink.Link;
+import org.zu.ardulink.connection.Connection;
 
 public class MqttTest {
 
-	private final Link link = mock(Link.class);
+	private final Connection connection = createConnection();
+	private final Link link = Link.createInstance("testlink", connection);
 	private final MqttClient mqttClient = new MqttClient(link);
+
+	@Before
+	public void setup() {
+		link.connect();
+	}
+
+	@After
+	public void tearDown() {
+		link.disconnect();
+		Link.destroyInstance("testlink");
+	}
+
+	private static Connection createConnection() {
+		Connection connection = mock(Connection.class);
+		doReturn(TRUE).when(connection).isConnected();
+		return connection;
+	}
 
 	@Test
 	public void canPowerOnDigitalPin() {
 		mqttClient.messageArrived("home/devices/ardulink/digital0/value/set",
 				mqttMessage("true"));
-		verify(link).sendPowerPinSwitch(0, POWER_HIGH);
-		verifyNoMoreInteractions(link);
+		verify(connection).writeSerial("alp://ppsw/0/1\n");
+		// verifyNoMoreInteractions(connection);
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
 		mqttClient.messageArrived("home/devices/ardulink/invalidTopic",
 				mqttMessage("true"));
-		verifyNoMoreInteractions(link);
+		verify(connection, never()).writeSerial(anyString());
+		// verifyNoMoreInteractions(connection);
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
 		mqttClient.messageArrived("home/devices/ardulink/digital0/value/set",
 				mqttMessage("xxxxxxxxxxxxxxxx"));
-		verify(link).sendPowerPinSwitch(0, POWER_LOW);
-		verifyNoMoreInteractions(link);
+		verify(connection).writeSerial("alp://ppsw/0/0\n");
+		// verifyNoMoreInteractions(connection);
 	}
 
 	@Test
 	public void canSetPowerAtAnalogPin() {
-		mqttClient.messageArrived("home/devices/ardulink/analog3/value/set",
-				mqttMessage("127"));
-		verify(link).sendPowerPinIntensity(3, 127);
-		verifyNoMoreInteractions(link);
+		String pin = "3";
+		String value = "127";
+		mqttClient.messageArrived("home/devices/ardulink/analog" + pin
+				+ "/value/set", mqttMessage(value));
+		verify(connection)
+				.writeSerial("alp://ppin/" + pin + "/" + value + "\n");
+		// verifyNoMoreInteractions(connection);
 	}
 
 	@Test
 	public void canHandleInvalidDigitalPayloads() {
-		mqttClient.messageArrived("home/devices/ardulink/analog3/value/set",
-				mqttMessage("NaN"));
-		verifyNoMoreInteractions(link);
+		String pin = "3";
+		String value = "NaN";
+		mqttClient.messageArrived("home/devices/ardulink/analog" + pin
+				+ "/value/set", mqttMessage(value));
+		// verifyNoMoreInteractions(connection);
+	}
+
+	@Test
+	@Ignore
+	public void doesPublishDigitalPinChanges() {
+		mqttClient.publishDigitalPinOnStateChanges(0);
+		// verify(connection).addDigitalReadChangeListener(null);
+		verify(connection).writeSerial("");
+		// verifyNoMoreInteractions(connection);
 	}
 
 	private MqttMessage mqttMessage(String message) {
