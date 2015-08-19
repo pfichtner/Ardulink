@@ -1,6 +1,7 @@
 package com.github.pfichtner.ardulink;
 
 import static java.lang.Boolean.parseBoolean;
+import static java.lang.String.format;
 import static org.zu.ardulink.protocol.IProtocol.POWER_HIGH;
 import static org.zu.ardulink.protocol.IProtocol.POWER_LOW;
 
@@ -14,23 +15,36 @@ import org.zu.ardulink.event.AnalogReadChangeListener;
 import org.zu.ardulink.event.DigitalReadChangeEvent;
 import org.zu.ardulink.event.DigitalReadChangeListener;
 
-public class MqttClient {
+public abstract class MqttClient {
 
-	private static final String DIGITAL_PIN = "digital";
-	private static final String ANALOG_PIN = "analog";
+	private static final String DIGITAL_PIN = "D";
+	private static final String ANALOG_PIN = "A";
+
+	public static final String DEFAULT_ANALOG_WRITE = ANALOG_PIN
+			+ "(\\w+)/value/set";
+	public static final String DEFAULT_DIGITAL_WRITE = DIGITAL_PIN
+			+ "(\\w+)/value/set";
+	public static final String DEFAULT_ANALOG_READ = ANALOG_PIN
+			+ "%s/value/get";
+	public static final String DEFAULT_DIGITAL_READ = DIGITAL_PIN
+			+ "%s/value/get";
 
 	private String brokerTopic = "home/devices/ardulink/";
 	private final Link link;
 
 	private final Pattern topicPatternDigitalWrite;
 	private final Pattern topicPatternAnalogWrite;
+	private final String topicPatternDigitalRead;
+	private final String topicPatternAnalogRead;
 
 	public MqttClient(Link link) {
 		this.link = link;
 		this.topicPatternAnalogWrite = Pattern.compile(this.brokerTopic
-				+ ANALOG_PIN + "(\\w+)/value/set");
+				+ DEFAULT_ANALOG_WRITE);
 		this.topicPatternDigitalWrite = Pattern.compile(this.brokerTopic
-				+ DIGITAL_PIN + "(\\w+)/value/set");
+				+ DEFAULT_DIGITAL_WRITE);
+		this.topicPatternDigitalRead = this.brokerTopic + DEFAULT_DIGITAL_READ;
+		this.topicPatternAnalogRead = this.brokerTopic + DEFAULT_ANALOG_READ;
 	}
 
 	public void messageArrived(String topic, MqttMessage message) {
@@ -79,7 +93,8 @@ public class MqttClient {
 		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
-				publish("D" + e.getPin() + "=" + e.getValue());
+				publish(format(topicPatternDigitalRead, e.getPin()),
+						String.valueOf(e.getValue()));
 			}
 
 			@Override
@@ -93,7 +108,8 @@ public class MqttClient {
 		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
-				publish("A" + e.getPin() + "=" + e.getValue());
+				publish(format(topicPatternAnalogRead, e.getPin()),
+						String.valueOf(e.getValue()));
 			}
 
 			@Override
@@ -103,9 +119,6 @@ public class MqttClient {
 		});
 	}
 
-	protected void publish(String message) {
-		// TODO Auto-generated method stub
-
-	}
+	protected abstract void publish(String topic, String message);
 
 }

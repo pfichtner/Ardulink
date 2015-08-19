@@ -24,9 +24,72 @@ import org.zu.ardulink.connection.serial.AbstractSerialConnection;
 
 public class MqttTest {
 
+	private static final String TOPIC = "home/devices/ardulink/";
+
+	public static class Message {
+
+		private final String topic;
+		private final String message;
+
+		public Message(String topic, Object message) {
+			this(topic, String.valueOf(message));
+		}
+
+		public Message(String topic, String message) {
+			this.topic = topic;
+			this.message = message;
+		}
+
+		public String getTopic() {
+			return topic;
+		}
+
+		public String getMessage() {
+			return message;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result
+					+ ((message == null) ? 0 : message.hashCode());
+			result = prime * result + ((topic == null) ? 0 : topic.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Message other = (Message) obj;
+			if (message == null) {
+				if (other.message != null)
+					return false;
+			} else if (!message.equals(other.message))
+				return false;
+			if (topic == null) {
+				if (other.topic != null)
+					return false;
+			} else if (!topic.equals(other.topic))
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "Message [topic=" + topic + ", message=" + message + "]";
+		}
+
+	}
+
 	private static final String LINKNAME = "testlink";
 
-	private final List<String> published = new ArrayList<String>();
+	private final List<Message> published = new ArrayList<Message>();
 
 	private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 	private final ConnectionContact connectionContact = new ConnectionContactImpl(
@@ -34,9 +97,10 @@ public class MqttTest {
 	private final Connection connection = createConnection(outputStream,
 			connectionContact);
 	private final Link link = Link.createInstance(LINKNAME, connection);
+
 	private final MqttClient mqttClient = new MqttClient(link) {
-		protected void publish(String message) {
-			published.add(message);
+		protected void publish(String topic, String message) {
+			published.add(new Message(topic, message));
 		};
 	};
 
@@ -110,21 +174,19 @@ public class MqttTest {
 
 	@Test
 	public void canPowerOnDigitalPin() throws IOException {
-		mqttClient.messageArrived("home/devices/ardulink/digital0/value/set",
-				mqttMessage("true"));
+		mqttClient.messageArrived(TOPIC + "D0/value/set", mqttMessage("true"));
 		assertThat(getMessage(), is("alp://ppsw/0/1\n"));
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
-		mqttClient.messageArrived("home/devices/ardulink/invalidTopic",
-				mqttMessage("true"));
+		mqttClient.messageArrived(TOPIC + "invalidTopic", mqttMessage("true"));
 		assertThat(getMessage(), is(""));
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
-		mqttClient.messageArrived("home/devices/ardulink/digital0/value/set",
+		mqttClient.messageArrived(TOPIC + "D0/value/set",
 				mqttMessage("xxxxxxxxxxxxxxxx"));
 		assertThat(getMessage(), is("alp://ppsw/0/0\n"));
 	}
@@ -133,8 +195,8 @@ public class MqttTest {
 	public void canSetPowerAtAnalogPin() {
 		String pin = "3";
 		String value = "127";
-		mqttClient.messageArrived("home/devices/ardulink/analog" + pin
-				+ "/value/set", mqttMessage(value));
+		mqttClient.messageArrived(TOPIC + "A" + pin + "/value/set",
+				mqttMessage(value));
 		assertThat(getMessage(), is("alp://ppin/" + pin + "/" + value + "\n"));
 	}
 
@@ -142,8 +204,8 @@ public class MqttTest {
 	public void canHandleInvalidDigitalPayloads() {
 		String pin = "3";
 		String value = "NaN";
-		mqttClient.messageArrived("home/devices/ardulink/analog" + pin
-				+ "/value/set", mqttMessage(value));
+		mqttClient.messageArrived(TOPIC + "A" + pin + "/value/set",
+				mqttMessage(value));
 	}
 
 	@Test
@@ -152,7 +214,8 @@ public class MqttTest {
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
 		simulateArduinoWrite("alp://dred/" + pin + "/" + value);
-		assertThat(published, is(singletonList("D" + pin + "=" + value)));
+		assertThat(published, is(singletonList(new Message(TOPIC + "D" + pin
+				+ "/value/get", value))));
 	}
 
 	@Test
@@ -161,7 +224,7 @@ public class MqttTest {
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
 		simulateArduinoWrite("alp://dred/" + anyOtherThan(pin) + "/" + value);
-		assertThat(published, is(Collections.<String> emptyList()));
+		assertThat(published, is(Collections.<Message> emptyList()));
 	}
 
 	@Test
@@ -170,7 +233,8 @@ public class MqttTest {
 		int value = 123;
 		mqttClient.publishAnalogPinOnStateChanges(pin);
 		simulateArduinoWrite("alp://ared/" + pin + "/" + value);
-		assertThat(published, is(singletonList("A" + pin + "=" + value)));
+		assertThat(published, is(singletonList(new Message(TOPIC + "A" + pin
+				+ "/value/get", value))));
 	}
 
 	@Test
@@ -179,7 +243,7 @@ public class MqttTest {
 		int value = 1;
 		mqttClient.publishAnalogPinOnStateChanges(pin);
 		simulateArduinoWrite("alp://dred/" + anyOtherThan(pin) + "/" + value);
-		assertThat(published, is(Collections.<String> emptyList()));
+		assertThat(published, is(Collections.<Message> emptyList()));
 	}
 
 	private int anyOtherThan(int pin) {
