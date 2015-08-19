@@ -54,7 +54,8 @@ public class MqttMain {
 
 		private org.eclipse.paho.client.mqttv3.MqttClient client;
 
-		public EMqttClient(Link link, Config config) {
+		public EMqttClient(Link link, Config config)
+				throws MqttSecurityException, MqttException {
 			super(link, new LinkMessageCallback() {
 				@Override
 				public void publish(String topic, MqttMessage message) {
@@ -73,6 +74,7 @@ public class MqttMain {
 			for (int digitalPin : digitals) {
 				publishDigitalPinOnStateChanges(digitalPin);
 			}
+			this.client = newClient(brokerHost, brokerPort, clientId);
 			this.client.setCallback(new MqttCallback() {
 				public void connectionLost(Throwable cause) {
 					do {
@@ -98,8 +100,16 @@ public class MqttMain {
 				public void deliveryComplete(IMqttDeliveryToken token) {
 					// nothing to do
 				}
-
 			});
+			connect();
+			subscribe();
+		}
+
+		private org.eclipse.paho.client.mqttv3.MqttClient newClient(
+				String host, int port, String clientId) throws MqttException,
+				MqttSecurityException {
+			return new org.eclipse.paho.client.mqttv3.MqttClient("tcp://"
+					+ host + ":" + port, clientId);
 		}
 
 		private void connect() throws MqttSecurityException, MqttException {
@@ -149,9 +159,7 @@ public class MqttMain {
 
 		mqttClient = new EMqttClient(createLink(),
 				Config.withTopic(this.brokerTopic));
-		mqttClient.connect();
 		try {
-			mqttClient.subscribe();
 			wait4ever();
 		} finally {
 			mqttClient.close();
