@@ -2,6 +2,7 @@ package com.github.pfichtner.ardulink;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
+import static org.zu.ardulink.connection.proxy.NetworkProxyServer.DEFAULT_LISTENING_PORT;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -17,8 +18,12 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.zu.ardulink.Link;
+import org.zu.ardulink.connection.proxy.NetworkProxyConnection;
 
 public class MqttMain {
+
+	@Option(name = "-brokerTopic", usage = "Topic to register. To switch outlets a message of the form $brokerTopic/$enumeratedName$NUM/value/set must be sent")
+	private String brokerTopic = Config.DEFAULT_TOPIC;
 
 	@Option(name = "-brokerHost", usage = "Hostname of the broker to connect to")
 	private String brokerHost = "localhost";
@@ -38,6 +43,9 @@ public class MqttMain {
 	@Option(name = "-a", aliases = "--analog", usage = "Analog pins to listen to")
 	private int[] analogs = new int[0];
 
+	@Option(name = "-remote", usage = "Host and port of a remote arduino")
+	private String remote;
+
 	private static final boolean retained = true;
 
 	private EMqttClient mqttClient;
@@ -46,15 +54,19 @@ public class MqttMain {
 
 		private org.eclipse.paho.client.mqttv3.MqttClient client;
 
-		public EMqttClient(Link link) {
+		public EMqttClient(Link link, Config config) {
 			super(link, new LinkMessageCallback() {
 				@Override
 				public void publish(String topic, MqttMessage message) {
-					// TODO implement
-					throw new UnsupportedOperationException(
-							"not yet implemented");
+					try {
+						mqttClient.publish(topic, message);
+					} catch (MqttPersistenceException e) {
+						throw new RuntimeException(e);
+					} catch (MqttException e) {
+						throw new RuntimeException(e);
+					}
 				}
-			}, Config.DEFAULT);
+			}, config);
 			for (int analogPin : analogs) {
 				publishAnalogPinOnStateChanges(analogPin);
 			}
@@ -96,13 +108,17 @@ public class MqttMain {
 		}
 
 		public void subscribe() throws MqttException {
-			// TODO topic
-			client.subscribe("FIXME" + '#');
+			client.subscribe(brokerTopic + '#');
 		}
 
 		public void publish(String topic, byte[] bytes, int i, boolean retained)
 				throws MqttPersistenceException, MqttException {
 			client.publish(topic, bytes, i, retained);
+		}
+
+		public void publish(String topic, MqttMessage message)
+				throws MqttPersistenceException, MqttException {
+			client.publish(topic, message);
 		}
 
 		public void close() throws MqttException {
@@ -128,11 +144,11 @@ public class MqttMain {
 			return;
 		}
 
-		mqttClient = new EMqttClient(Link.getDefaultInstance());
-
 		// ensure brokerTopic is normalized
-		// TODO make configurable
-		// mqttClient.setBrokerTopic(this.brokerTopic);
+		setBrokerTopic(this.brokerTopic);
+
+		mqttClient = new EMqttClient(createLink(),
+				Config.withTopic(this.brokerTopic));
 		mqttClient.connect();
 		try {
 			mqttClient.subscribe();
@@ -141,6 +157,27 @@ public class MqttMain {
 			mqttClient.close();
 		}
 
+	}
+
+	private Link createLink() {
+		if (remote == null || remote.isEmpty()) {
+			return Link.getDefaultInstance();
+		}
+
+		String[] hostAndPort = remote.split("\\:");
+		try {
+			int port = hostAndPort.length == 1 ? DEFAULT_LISTENING_PORT
+					: Integer.parseInt(hostAndPort[1]);
+			return Link.createInstance("network", new NetworkProxyConnection(
+					hostAndPort[0], port));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public void setBrokerTopic(String brokerTopic) {
+		this.brokerTopic = brokerTopic.endsWith("/") ? brokerTopic
+				: brokerTopic + '/';
 	}
 
 	private static void wait4ever() throws InterruptedException {
