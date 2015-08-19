@@ -18,7 +18,16 @@ import org.zu.ardulink.event.DigitalReadChangeListener;
 public class MqttClient {
 
 	public interface LinkMessageCallback {
-		void publish(String topic, String message);
+		/**
+		 * This method is called by Ardulink-Mqtt when an observed analog or
+		 * digital pin changed its state.
+		 * 
+		 * @param topic
+		 *            the topic to send to
+		 * @param message
+		 *            the payload to send
+		 */
+		void publish(String topic, MqttMessage message);
 	}
 
 	private static final String DIGITAL_PIN = "D";
@@ -54,6 +63,15 @@ public class MqttClient {
 		this.topicPatternAnalogRead = this.brokerTopic + DEFAULT_ANALOG_READ;
 	}
 
+	/**
+	 * This method should be called by the publisher when a new message has
+	 * arrived.
+	 * 
+	 * @param topic
+	 *            the message's topic
+	 * @param message
+	 *            the payload
+	 */
 	public void messageArrived(String topic, MqttMessage message) {
 		if (!handleDigital(topic, message)) {
 			handleAnalog(topic, message);
@@ -102,7 +120,7 @@ public class MqttClient {
 			public void stateChanged(DigitalReadChangeEvent e) {
 				linkMessageCallback.publish(
 						format(topicPatternDigitalRead, e.getPin()),
-						String.valueOf(e.getValue()));
+						new MqttMessage(String.valueOf(e.getValue()).getBytes()));
 			}
 
 			@Override
@@ -118,7 +136,7 @@ public class MqttClient {
 			public void stateChanged(AnalogReadChangeEvent e) {
 				linkMessageCallback.publish(
 						format(topicPatternAnalogRead, e.getPin()),
-						String.valueOf(e.getValue()));
+						new MqttMessage(String.valueOf(e.getValue()).getBytes()));
 			}
 
 			@Override

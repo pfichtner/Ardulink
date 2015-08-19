@@ -49,7 +49,7 @@ public class MqttMain {
 		public EMqttClient(Link link) {
 			super(link, new LinkMessageCallback() {
 				@Override
-				public void publish(String topic, String message) {
+				public void publish(String topic, MqttMessage message) {
 					// TODO implement
 					throw new UnsupportedOperationException(
 							"not yet implemented");
