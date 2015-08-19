@@ -6,38 +6,56 @@ public abstract class Config {
 
 	public static final Config DEFAULT = new Config() {
 
-		private static final String DIGITAL_PIN = "D";
-		private static final String ANALOG_PIN = "A";
+		private Pattern topicPatternDigitalWrite;
+		private String topicPatternDigitalRead;
+		private Pattern topicPatternAnalogWrite;
+		private String topicPatternAnalogRead;
 
-		public static final String DEFAULT_ANALOG_WRITE = ANALOG_PIN
-				+ "(\\w+)/value/set";
-		public static final String DEFAULT_DIGITAL_WRITE = DIGITAL_PIN
-				+ "(\\w+)/value/set";
-		public static final String DEFAULT_ANALOG_READ = ANALOG_PIN
-				+ "%s/value/get";
-		public static final String DEFAULT_DIGITAL_READ = DIGITAL_PIN
-				+ "%s/value/get";
+		{
+			setTopic("home/devices/ardulink/");
+		}
 
-		private String brokerTopic = "home/devices/ardulink/";
+		private void setTopic(String brokerTopic) {
+			this.topicPatternDigitalWrite = Pattern.compile(write(brokerTopic,
+					"D"));
+			this.topicPatternDigitalRead = read(brokerTopic, "D");
+			this.topicPatternAnalogWrite = Pattern.compile(write(brokerTopic,
+					"A"));
+			this.topicPatternAnalogRead = read(brokerTopic, "A");
+		}
+
+		private String read(String brokerTopic, String prefix) {
+			return format(brokerTopic, prefix, "%s", "/get");
+		}
+
+		private String write(String brokerTopic, String prefix) {
+			return format(brokerTopic, prefix, "(\\w+)", "/set");
+		}
+
+		private String format(String brokerTopic, String prefix,
+				String numerated, String appendix) {
+			return brokerTopic + prefix + String.format("%s/value", numerated)
+					+ appendix;
+		}
 
 		@Override
 		public Pattern getTopicPatternDigitalWrite() {
-			return Pattern.compile(this.brokerTopic + DEFAULT_DIGITAL_WRITE);
+			return topicPatternDigitalWrite;
 		}
 
 		@Override
 		public String getTopicPatternDigitalRead() {
-			return this.brokerTopic + DEFAULT_DIGITAL_READ;
+			return topicPatternDigitalRead;
 		}
 
 		@Override
 		public Pattern getTopicPatternAnalogWrite() {
-			return Pattern.compile(this.brokerTopic + DEFAULT_ANALOG_WRITE);
+			return topicPatternAnalogWrite;
 		}
 
 		@Override
 		public String getTopicPatternAnalogRead() {
-			return this.brokerTopic + DEFAULT_ANALOG_READ;
+			return topicPatternAnalogRead;
 		}
 	};
 
