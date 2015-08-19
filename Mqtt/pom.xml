@@ -9,6 +9,17 @@
 		<version>0.5.1-SNAPSHOT</version>
 	</parent>
 
+	<repositories>
+		<repository>
+			<id>Eclipse Paho Repo</id>
+			<url>https://repo.eclipse.org/content/repositories/paho-releases/</url>
+		</repository>
+		<repository>
+			<id>bintray</id>
+			<url>http://dl.bintray.com/andsel/maven/</url>
+		</repository>
+	</repositories>
+
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<testSourceDirectory>test</testSourceDirectory>
