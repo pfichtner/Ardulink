@@ -119,20 +119,20 @@ public class MqttTest {
 	@Test
 	public void canPowerOnDigitalPin() {
 		mqttClient.messageArrived(TOPIC + "D0/value/set", mqttMessage("true"));
-		assertThat(getMessage(), is("alp://ppsw/0/1\n"));
+		assertThat(messagesReceived(), is("alp://ppsw/0/1\n"));
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
 		mqttClient.messageArrived(TOPIC + "invalidTopic", mqttMessage("true"));
-		assertThat(getMessage(), is(""));
+		assertThat(messagesReceived(), is(""));
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
 		mqttClient.messageArrived(TOPIC + "D0/value/set",
 				mqttMessage("xxxxxxxxxxxxxxxx"));
-		assertThat(getMessage(), is("alp://ppsw/0/0\n"));
+		assertThat(messagesReceived(), is("alp://ppsw/0/0\n"));
 	}
 
 	@Test
@@ -141,7 +141,8 @@ public class MqttTest {
 		String value = "127";
 		mqttClient.messageArrived(TOPIC + "A" + pin + "/value/set",
 				mqttMessage(value));
-		assertThat(getMessage(), is("alp://ppin/" + pin + "/" + value + "\n"));
+		assertThat(messagesReceived(), is("alp://ppin/" + pin + "/" + value
+				+ "\n"));
 	}
 
 	@Test
@@ -215,7 +216,7 @@ public class MqttTest {
 		return new MqttMessage(String.valueOf(message).getBytes());
 	}
 
-	private String getMessage() {
+	private String messagesReceived() {
 		try {
 			outputStream.close();
 		} catch (IOException e) {
