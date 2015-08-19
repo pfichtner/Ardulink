@@ -31,7 +31,7 @@
 					<archive>
 						<manifest>
 							<addClasspath>true</addClasspath>
-							<mainClass>org.zu.ardulink.Mqtt</mainClass>
+							<mainClass>com.github.pfichtner.ardulink.MqttMain</mainClass>
 						</manifest>
 					</archive>
 				</configuration>
