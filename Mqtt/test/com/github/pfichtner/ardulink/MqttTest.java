@@ -1,5 +1,6 @@
 package com.github.pfichtner.ardulink;
 
+import static java.util.Collections.singletonList;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
@@ -150,13 +151,48 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
-		int[] message = toCodepoints("alp://dred/" + pin + "/" + value);
-		connectionContact.parseInput(anyId(), message.length, message);
-		assertThat(published, is(Collections.singletonList(pin + "=" + value)));
+		simulateArduinoWrite("alp://dred/" + pin + "/" + value);
+		assertThat(published, is(singletonList("D" + pin + "=" + value)));
+	}
+
+	@Test
+	public void doesNotPublishDigitalPinChangesOnUnobservedPins() {
+		int pin = 0;
+		int value = 1;
+		mqttClient.publishDigitalPinOnStateChanges(pin);
+		simulateArduinoWrite("alp://dred/" + anyOtherThan(pin) + "/" + value);
+		assertThat(published, is(Collections.<String> emptyList()));
+	}
+
+	@Test
+	public void doesPublishAnalogPinChanges() {
+		int pin = 9;
+		int value = 123;
+		mqttClient.publishAnalogPinOnStateChanges(pin);
+		simulateArduinoWrite("alp://ared/" + pin + "/" + value);
+		assertThat(published, is(singletonList("A" + pin + "=" + value)));
+	}
+
+	@Test
+	public void doesNotPublishAnalogPinChangesOnUnobservedPins() {
+		int pin = 0;
+		int value = 1;
+		mqttClient.publishAnalogPinOnStateChanges(pin);
+		simulateArduinoWrite("alp://dred/" + anyOtherThan(pin) + "/" + value);
+		assertThat(published, is(Collections.<String> emptyList()));
+	}
+
+	private int anyOtherThan(int pin) {
+		return ++pin;
+	}
+
+	private void simulateArduinoWrite(String message) {
+		int[] codepoints = toCodepoints(message);
+		connectionContact.parseInput(anyId(), codepoints.length, codepoints);
 	}
 
 	private String anyId() {
-		return "id";
+		return "randomId";
 	}
 
 	private int[] toCodepoints(String message) {

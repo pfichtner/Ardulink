@@ -9,6 +9,8 @@ import java.util.regex.Pattern;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.zu.ardulink.Link;
+import org.zu.ardulink.event.AnalogReadChangeEvent;
+import org.zu.ardulink.event.AnalogReadChangeListener;
 import org.zu.ardulink.event.DigitalReadChangeEvent;
 import org.zu.ardulink.event.DigitalReadChangeListener;
 
@@ -77,7 +79,7 @@ public class MqttClient {
 		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
-				publish(e.getPin() + "=" + e.getValue());
+				publish("D" + e.getPin() + "=" + e.getValue());
 			}
 
 			@Override
@@ -87,7 +89,21 @@ public class MqttClient {
 		});
 	}
 
-	protected void publish(String messag) {
+	public void publishAnalogPinOnStateChanges(final int pin) {
+		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
+			@Override
+			public void stateChanged(AnalogReadChangeEvent e) {
+				publish("A" + e.getPin() + "=" + e.getValue());
+			}
+
+			@Override
+			public int getPinListening() {
+				return pin;
+			}
+		});
+	}
+
+	protected void publish(String message) {
 		// TODO Auto-generated method stub
 
 	}
