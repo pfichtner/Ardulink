@@ -22,6 +22,8 @@ import org.zu.ardulink.connection.Connection;
 import org.zu.ardulink.connection.ConnectionContact;
 import org.zu.ardulink.connection.serial.AbstractSerialConnection;
 
+import com.github.pfichtner.ardulink.MqttClient.LinkMessageCallback;
+
 public class MqttTest {
 
 	private static final String TOPIC = "home/devices/ardulink/";
@@ -98,11 +100,14 @@ public class MqttTest {
 			connectionContact);
 	private final Link link = Link.createInstance(LINKNAME, connection);
 
-	private final MqttClient mqttClient = new MqttClient(link) {
-		protected void publish(String topic, String message) {
-			published.add(new Message(topic, message));
-		};
-	};
+	private final MqttClient mqttClient = new MqttClient(link,
+			new LinkMessageCallback() {
+				@Override
+				public void publish(String topic, String message) {
+					published.add(new Message(topic, message));
+				}
+
+			});
 
 	{
 		// this is an extremely high coupling of ConnectionContactImpl and Link

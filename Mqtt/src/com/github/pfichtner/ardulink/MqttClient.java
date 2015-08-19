@@ -15,7 +15,11 @@ import org.zu.ardulink.event.AnalogReadChangeListener;
 import org.zu.ardulink.event.DigitalReadChangeEvent;
 import org.zu.ardulink.event.DigitalReadChangeListener;
 
-public abstract class MqttClient {
+public class MqttClient {
+
+	public interface LinkMessageCallback {
+		void publish(String topic, String message);
+	}
 
 	private static final String DIGITAL_PIN = "D";
 	private static final String ANALOG_PIN = "A";
@@ -30,15 +34,18 @@ public abstract class MqttClient {
 			+ "%s/value/get";
 
 	private String brokerTopic = "home/devices/ardulink/";
+
 	private final Link link;
+	private final LinkMessageCallback linkMessageCallback;
 
 	private final Pattern topicPatternDigitalWrite;
 	private final Pattern topicPatternAnalogWrite;
 	private final String topicPatternDigitalRead;
 	private final String topicPatternAnalogRead;
 
-	public MqttClient(Link link) {
+	public MqttClient(Link link, LinkMessageCallback linkMessageCallback) {
 		this.link = link;
+		this.linkMessageCallback = linkMessageCallback;
 		this.topicPatternAnalogWrite = Pattern.compile(this.brokerTopic
 				+ DEFAULT_ANALOG_WRITE);
 		this.topicPatternDigitalWrite = Pattern.compile(this.brokerTopic
@@ -93,7 +100,8 @@ public abstract class MqttClient {
 		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
-				publish(format(topicPatternDigitalRead, e.getPin()),
+				linkMessageCallback.publish(
+						format(topicPatternDigitalRead, e.getPin()),
 						String.valueOf(e.getValue()));
 			}
 
@@ -108,7 +116,8 @@ public abstract class MqttClient {
 		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
-				publish(format(topicPatternAnalogRead, e.getPin()),
+				linkMessageCallback.publish(
+						format(topicPatternAnalogRead, e.getPin()),
 						String.valueOf(e.getValue()));
 			}
 
@@ -118,7 +127,5 @@ public abstract class MqttClient {
 			}
 		});
 	}
-
-	protected abstract void publish(String topic, String message);
 
 }

@@ -1,5 +1,8 @@
 package com.github.pfichtner.ardulink;
 
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -29,6 +32,12 @@ public class MqttMain {
 	@Option(name = "-publishClientInfo", usage = "When set, publish messages on connect/disconnect under this topic")
 	private String publishClientInfoTopic;
 
+	@Option(name = "-d", aliases = "--digital", usage = "Digital pins to listen to")
+	private int[] digitals = new int[] { 2 };
+
+	@Option(name = "-a", aliases = "--analog", usage = "Analog pins to listen to")
+	private int[] analogs = new int[0];
+
 	private static final boolean retained = true;
 
 	private EMqttClient mqttClient;
@@ -38,7 +47,20 @@ public class MqttMain {
 		private org.eclipse.paho.client.mqttv3.MqttClient client;
 
 		public EMqttClient(Link link) {
-			super(link);
+			super(link, new LinkMessageCallback() {
+				@Override
+				public void publish(String topic, String message) {
+					// TODO implement
+					throw new UnsupportedOperationException(
+							"not yet implemented");
+				}
+			});
+			for (int analogPin : analogs) {
+				publishAnalogPinOnStateChanges(analogPin);
+			}
+			for (int digitalPin : digitals) {
+				publishDigitalPinOnStateChanges(digitalPin);
+			}
 			this.client.setCallback(new MqttCallback() {
 				public void connectionLost(Throwable cause) {
 					do {
@@ -70,7 +92,7 @@ public class MqttMain {
 
 		private void connect() throws MqttSecurityException, MqttException {
 			this.client.connect(mqttConnectOptions());
-			publishClientStatus(Boolean.TRUE);
+			publishClientStatus(TRUE);
 		}
 
 		public void subscribe() throws MqttException {
@@ -81,10 +103,6 @@ public class MqttMain {
 		public void publish(String topic, byte[] bytes, int i, boolean retained)
 				throws MqttPersistenceException, MqttException {
 			client.publish(topic, bytes, i, retained);
-		}
-
-		@Override
-		protected void publish(String topic, String message) {
 		}
 
 		public void close() throws MqttException {
@@ -136,8 +154,7 @@ public class MqttMain {
 		MqttConnectOptions options = new MqttConnectOptions();
 		String topic = this.publishClientInfoTopic;
 		if (publishClientStatus()) {
-			options.setWill(topic, Boolean.FALSE.toString().getBytes(), 0,
-					retained);
+			options.setWill(topic, FALSE.toString().getBytes(), 0, retained);
 		}
 		return options;
 	}
