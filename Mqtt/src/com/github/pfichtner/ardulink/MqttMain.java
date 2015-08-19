@@ -54,7 +54,7 @@ public class MqttMain {
 					throw new UnsupportedOperationException(
 							"not yet implemented");
 				}
-			});
+			}, Config.DEFAULT);
 			for (int analogPin : analogs) {
 				publishAnalogPinOnStateChanges(analogPin);
 			}

@@ -6,7 +6,6 @@ import static org.zu.ardulink.protocol.IProtocol.POWER_HIGH;
 import static org.zu.ardulink.protocol.IProtocol.POWER_LOW;
 
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.zu.ardulink.Link;
@@ -30,37 +29,16 @@ public class MqttClient {
 		void publish(String topic, MqttMessage message);
 	}
 
-	private static final String DIGITAL_PIN = "D";
-	private static final String ANALOG_PIN = "A";
-
-	public static final String DEFAULT_ANALOG_WRITE = ANALOG_PIN
-			+ "(\\w+)/value/set";
-	public static final String DEFAULT_DIGITAL_WRITE = DIGITAL_PIN
-			+ "(\\w+)/value/set";
-	public static final String DEFAULT_ANALOG_READ = ANALOG_PIN
-			+ "%s/value/get";
-	public static final String DEFAULT_DIGITAL_READ = DIGITAL_PIN
-			+ "%s/value/get";
-
-	private String brokerTopic = "home/devices/ardulink/";
-
 	private final Link link;
 	private final LinkMessageCallback linkMessageCallback;
 
-	private final Pattern topicPatternDigitalWrite;
-	private final Pattern topicPatternAnalogWrite;
-	private final String topicPatternDigitalRead;
-	private final String topicPatternAnalogRead;
+	private final Config config;
 
-	public MqttClient(Link link, LinkMessageCallback linkMessageCallback) {
+	public MqttClient(Link link, LinkMessageCallback linkMessageCallback,
+			Config config) {
 		this.link = link;
 		this.linkMessageCallback = linkMessageCallback;
-		this.topicPatternAnalogWrite = Pattern.compile(this.brokerTopic
-				+ DEFAULT_ANALOG_WRITE);
-		this.topicPatternDigitalWrite = Pattern.compile(this.brokerTopic
-				+ DEFAULT_DIGITAL_WRITE);
-		this.topicPatternDigitalRead = this.brokerTopic + DEFAULT_DIGITAL_READ;
-		this.topicPatternAnalogRead = this.brokerTopic + DEFAULT_ANALOG_READ;
+		this.config = config;
 	}
 
 	/**
@@ -79,7 +57,8 @@ public class MqttClient {
 	}
 
 	private boolean handleDigital(String topic, MqttMessage message) {
-		Matcher matcher = this.topicPatternDigitalWrite.matcher(topic);
+		Matcher matcher = this.config.getTopicPatternDigitalWrite().matcher(
+				topic);
 		if (matcher.matches()) {
 			Integer pin = tryParse(matcher.group(1));
 			if (pin != null) {
@@ -93,7 +72,8 @@ public class MqttClient {
 	}
 
 	private boolean handleAnalog(String topic, MqttMessage message) {
-		Matcher matcher = this.topicPatternAnalogWrite.matcher(topic);
+		Matcher matcher = this.config.getTopicPatternAnalogWrite().matcher(
+				topic);
 		if (matcher.matches()) {
 			Integer pin = tryParse(matcher.group(1));
 			Integer intensity = tryParse(new String(message.getPayload()));
@@ -119,7 +99,7 @@ public class MqttClient {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
 				linkMessageCallback.publish(
-						format(topicPatternDigitalRead, e.getPin()),
+						format(config.getTopicPatternDigitalRead(), e.getPin()),
 						new MqttMessage(String.valueOf(e.getValue()).getBytes()));
 			}
 
@@ -135,7 +115,7 @@ public class MqttClient {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
 				linkMessageCallback.publish(
-						format(topicPatternAnalogRead, e.getPin()),
+						format(config.getTopicPatternAnalogRead(), e.getPin()),
 						new MqttMessage(String.valueOf(e.getValue()).getBytes()));
 			}
 

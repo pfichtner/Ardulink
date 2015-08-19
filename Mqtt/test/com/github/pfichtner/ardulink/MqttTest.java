@@ -46,7 +46,7 @@ public class MqttTest {
 					published.add(new Message(topic, message));
 				}
 
-			});
+			}, Config.DEFAULT);
 
 	{
 		// there is an extremely high coupling of ConnectionContactImpl and Link
