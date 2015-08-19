@@ -39,34 +39,34 @@ public class MqttTest {
 			published.add(message);
 		};
 	};
+
 	{
+		// this is an extremely high coupling of ConnectionContactImpl and Link
+		// which can not be solved other than injecting the variables through
+		// reflection
+		set(connectionContact, getField(connectionContact, "link"), link);
+		set(link, getField(link, "connectionContact"), connectionContact);
+
+	}
+
+	private static Field getField(Object target, String fieldName) {
 		try {
-			Field field = connectionContact.getClass().getDeclaredField("link");
-			field.setAccessible(true);
-			field.set(connectionContact, link);
+			return target.getClass().getDeclaredField(fieldName);
 		} catch (NoSuchFieldException e) {
-			throw new RuntimeException(e);
+			throw new IllegalStateException(e);
 		} catch (SecurityException e) {
-			throw new RuntimeException(e);
-		} catch (IllegalArgumentException e) {
-			throw new RuntimeException(e);
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
+			throw new IllegalStateException(e);
 		}
 	}
-	{
+
+	private static void set(Object target, Field field, Object instance) {
+		field.setAccessible(true);
 		try {
-			Field field = link.getClass().getDeclaredField("connectionContact");
-			field.setAccessible(true);
-			field.set(link, connectionContact);
-		} catch (NoSuchFieldException e) {
-			throw new RuntimeException(e);
-		} catch (SecurityException e) {
-			throw new RuntimeException(e);
+			field.set(target, instance);
 		} catch (IllegalArgumentException e) {
-			throw new RuntimeException(e);
+			throw new IllegalStateException(e);
 		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
+			throw new IllegalStateException(e);
 		}
 	}
 
