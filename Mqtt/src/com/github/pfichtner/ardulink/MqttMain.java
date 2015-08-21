@@ -46,11 +46,11 @@ public class MqttMain {
 	@Option(name = "-remote", usage = "Host and port of a remote arduino")
 	private String remote;
 
-	private static final boolean retained = true;
-
 	private EMqttClient mqttClient;
 
 	private class EMqttClient extends MqttClient {
+
+		private static final boolean RETAINED = true;
 
 		private org.eclipse.paho.client.mqttv3.MqttClient client;
 
@@ -121,19 +121,28 @@ public class MqttMain {
 			client.subscribe(brokerTopic + '#');
 		}
 
-		public void publish(String topic, byte[] bytes, int i, boolean retained)
-				throws MqttPersistenceException, MqttException {
-			client.publish(topic, bytes, i, retained);
-		}
-
 		public void publish(String topic, MqttMessage message)
 				throws MqttPersistenceException, MqttException {
 			client.publish(topic, message);
 		}
 
+		public void publishRetained(String topic, String message)
+				throws MqttPersistenceException, MqttException {
+			client.publish(topic, message.getBytes(), 0, RETAINED);
+		}
+
 		public void close() throws MqttException {
 			client.disconnect();
 			client.close();
+		}
+
+		private MqttConnectOptions mqttConnectOptions() {
+			MqttConnectOptions options = new MqttConnectOptions();
+			if (publishClientStatus()) {
+				options.setWill(publishClientInfoTopic, FALSE.toString()
+						.getBytes(), 0, RETAINED);
+			}
+			return options;
 		}
 
 	}
@@ -195,20 +204,11 @@ public class MqttMain {
 		}
 	}
 
-	private MqttConnectOptions mqttConnectOptions() {
-		MqttConnectOptions options = new MqttConnectOptions();
-		String topic = this.publishClientInfoTopic;
-		if (publishClientStatus()) {
-			options.setWill(topic, FALSE.toString().getBytes(), 0, retained);
-		}
-		return options;
-	}
-
 	private void publishClientStatus(Boolean state) throws MqttException,
 			MqttPersistenceException {
 		if (publishClientStatus()) {
-			this.mqttClient.publish(this.publishClientInfoTopic, state
-					.toString().getBytes(), 0, retained);
+			this.mqttClient.publishRetained(this.publishClientInfoTopic,
+					state.toString());
 		}
 	}
 
