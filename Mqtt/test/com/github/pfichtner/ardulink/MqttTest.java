@@ -150,6 +150,7 @@ public class MqttTest {
 		String value = "NaN";
 		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
 				mqttMessage(value));
+		assertThat(messagesReceived(), is(""));
 	}
 
 	@Test
