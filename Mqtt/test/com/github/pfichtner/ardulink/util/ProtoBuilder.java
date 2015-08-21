@@ -1,4 +1,4 @@
-package com.github.pfichtner.ardulink;
+package com.github.pfichtner.ardulink.util;
 
 public class ProtoBuilder {
 

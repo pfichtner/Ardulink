@@ -1,7 +1,7 @@
 package com.github.pfichtner.ardulink;
 
-import static com.github.pfichtner.ardulink.MqttMessageBuilder.messageWithBasicTopic;
-import static com.github.pfichtner.ardulink.ProtoBuilder.arduinoCommand;
+import static com.github.pfichtner.ardulink.util.MqttMessageBuilder.messageWithBasicTopic;
+import static com.github.pfichtner.ardulink.util.ProtoBuilder.arduinoCommand;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
@@ -24,6 +24,7 @@ import org.zu.ardulink.connection.ConnectionContact;
 import org.zu.ardulink.connection.serial.AbstractSerialConnection;
 
 import com.github.pfichtner.ardulink.MqttClient.LinkMessageCallback;
+import com.github.pfichtner.ardulink.util.Message;
 
 public class MqttTest {
 

@@ -1,4 +1,4 @@
-package com.github.pfichtner.ardulink;
+package com.github.pfichtner.ardulink.util;
 
 import static java.lang.String.format;
 
