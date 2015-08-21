@@ -1,6 +1,5 @@
 package com.github.pfichtner.ardulink;
 
-
 public class Message {
 
 	private final String topic;
@@ -9,6 +8,14 @@ public class Message {
 	public Message(String topic, String message) {
 		this.topic = topic;
 		this.message = message;
+	}
+
+	public String getTopic() {
+		return topic;
+	}
+
+	public String getMessage() {
+		return message;
 	}
 
 	@Override

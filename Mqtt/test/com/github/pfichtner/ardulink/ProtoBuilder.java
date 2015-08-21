@@ -5,7 +5,7 @@ public class ProtoBuilder {
 	private final String command;
 	private int pin;
 
-	public static ProtoBuilder command(String command) {
+	public static ProtoBuilder arduinoCommand(String command) {
 		return new ProtoBuilder(command);
 	}
 

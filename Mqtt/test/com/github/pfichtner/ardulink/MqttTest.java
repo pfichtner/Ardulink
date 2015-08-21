@@ -1,6 +1,7 @@
 package com.github.pfichtner.ardulink;
 
-import static com.github.pfichtner.ardulink.ProtoBuilder.command;
+import static com.github.pfichtner.ardulink.MqttMessageBuilder.messageWithBasicTopic;
+import static com.github.pfichtner.ardulink.ProtoBuilder.arduinoCommand;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
@@ -118,39 +119,44 @@ public class MqttTest {
 
 	@Test
 	public void canPowerOnDigitalPin() {
-		mqttClient.toArduino(TOPIC + "D0/value/set", mqttMessage("true"));
-		assertThat(serialReceived(), is(command("ppsw").forPin(0).withValue(1)));
+		int pin = 0;
+		simulateMqttToArduino(messageWithBasicTopic(TOPIC).forDigitalPin(pin)
+				.withValue(true).createSetMessage());
+		assertThat(serialReceived(), is(arduinoCommand("ppsw").forPin(pin)
+				.withValue(1)));
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
-		mqttClient.toArduino(TOPIC + "invalidTopic", mqttMessage("true"));
+		mqttClient.toArduino(TOPIC + "invalidTopic", String.valueOf("true"));
 		assertThat(serialReceived(), is(""));
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
-		mqttClient.toArduino(TOPIC + "D0/value/set",
-				mqttMessage("xxxxxxxxxxxxxxxx"));
-		assertThat(serialReceived(), is(command("ppsw").forPin(0).withValue(0)));
+		int pin = 3;
+		simulateMqttToArduino(messageWithBasicTopic(TOPIC).forDigitalPin(pin)
+				.withValue("xxxxxxxxINVALIDxxxxxxxx").createSetMessage());
+		assertThat(serialReceived(), is(arduinoCommand("ppsw").forPin(pin)
+				.withValue(0)));
 	}
 
 	@Test
 	public void canSetPowerAtAnalogPin() {
 		int pin = 3;
 		int value = 127;
-		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
-				mqttMessage(value));
-		assertThat(serialReceived(),
-				is(command("ppin").forPin(pin).withValue(value)));
+		simulateMqttToArduino(messageWithBasicTopic(TOPIC).forAnalogPin(pin)
+				.withValue(value).createSetMessage());
+		assertThat(serialReceived(), is(arduinoCommand("ppin").forPin(pin)
+				.withValue(value)));
 	}
 
 	@Test
 	public void canHandleInvalidDigitalPayloads() {
-		String pin = "3";
+		int pin = 3;
 		String value = "NaN";
-		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
-				mqttMessage(value));
+		simulateMqttToArduino(messageWithBasicTopic(TOPIC).forAnalogPin(pin)
+				.withValue(value).createSetMessage());
 		assertThat(serialReceived(), is(""));
 	}
 
@@ -158,18 +164,20 @@ public class MqttTest {
 	public void doesPublishDigitalPinChanges() {
 		int pin = 0;
 		int value = 1;
-		mqttClient.publishDigitalPinOnStateChanges(pin);
-		simulateArduinoMessage(command("dred").forPin(pin).withValue(value));
-		assertThat(published, is(singletonList(new Message(TOPIC + "D" + pin
-				+ "/value/get", mqttMessage(value)))));
+		mqttClient.enableDigitalPinChangeEvents(pin);
+		simulateArduinoToMqtt(arduinoCommand("dred").forPin(pin).withValue(
+				value));
+		assertThat(published, is(singletonList(messageWithBasicTopic(TOPIC)
+				.forDigitalPin(pin).withValue((Object) value)
+				.createGetMessage())));
 	}
 
 	@Test
 	public void doesNotPublishDigitalPinChangesOnUnobservedPins() {
 		int pin = 0;
 		int value = 1;
-		mqttClient.publishDigitalPinOnStateChanges(pin);
-		simulateArduinoMessage(command("dred").forPin(anyOtherThan(pin))
+		mqttClient.enableDigitalPinChangeEvents(pin);
+		simulateArduinoToMqtt(arduinoCommand("dred").forPin(anyOtherThan(pin))
 				.withValue(value));
 		assertThat(published, is(Collections.<Message> emptyList()));
 	}
@@ -178,18 +186,20 @@ public class MqttTest {
 	public void doesPublishAnalogPinChanges() {
 		int pin = 9;
 		int value = 123;
-		mqttClient.publishAnalogPinOnStateChanges(pin);
-		simulateArduinoMessage(command("ared").forPin(pin).withValue(value));
-		assertThat(published, is(singletonList(new Message(TOPIC + "A" + pin
-				+ "/value/get", mqttMessage(value)))));
+		mqttClient.enableAnalogPinChangeEvents(pin);
+		simulateArduinoToMqtt(arduinoCommand("ared").forPin(pin).withValue(
+				value));
+		assertThat(published,
+				is(singletonList(messageWithBasicTopic(TOPIC).forAnalogPin(pin)
+						.withValue((Object) value).createGetMessage())));
 	}
 
 	@Test
 	public void doesNotPublishAnalogPinChangesOnUnobservedPins() {
 		int pin = 0;
 		int value = 1;
-		mqttClient.publishAnalogPinOnStateChanges(pin);
-		simulateArduinoMessage(command("ared").forPin(anyOtherThan(pin))
+		mqttClient.enableAnalogPinChangeEvents(pin);
+		simulateArduinoToMqtt(arduinoCommand("ared").forPin(anyOtherThan(pin))
 				.withValue(value));
 		assertThat(published, is(Collections.<Message> emptyList()));
 	}
@@ -198,7 +208,7 @@ public class MqttTest {
 		return ++pin;
 	}
 
-	private void simulateArduinoMessage(String message) {
+	private void simulateArduinoToMqtt(String message) {
 		int[] codepoints = toCodepoints(message);
 		connectionContact.parseInput(anyId(), codepoints.length, codepoints);
 	}
@@ -215,8 +225,8 @@ public class MqttTest {
 		return codepoints;
 	}
 
-	private String mqttMessage(Object message) {
-		return String.valueOf(message);
+	private void simulateMqttToArduino(Message message) {
+		mqttClient.toArduino(message.getTopic(), message.getMessage());
 	}
 
 	private String serialReceived() {
