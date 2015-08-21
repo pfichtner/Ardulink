@@ -1,5 +1,6 @@
 package com.github.pfichtner.ardulink;
 
+import static com.github.pfichtner.ardulink.ProtoBuilder.command;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
@@ -118,37 +119,39 @@ public class MqttTest {
 	@Test
 	public void canPowerOnDigitalPin() {
 		mqttClient.toArduino(TOPIC + "D0/value/set", mqttMessage("true"));
-		assertThat(messagesReceived(), is("alp://ppsw/0/1\n"));
+		assertThat(serialReceived(), is(command("ppsw").forPin(0).withValue(1)));
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
 		mqttClient.toArduino(TOPIC + "invalidTopic", mqttMessage("true"));
-		assertThat(messagesReceived(), is(""));
+		assertThat(serialReceived(), is(""));
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
 		mqttClient.toArduino(TOPIC + "D0/value/set",
 				mqttMessage("xxxxxxxxxxxxxxxx"));
-		assertThat(messagesReceived(), is("alp://ppsw/0/0\n"));
+		assertThat(serialReceived(), is(command("ppsw").forPin(0).withValue(0)));
 	}
 
 	@Test
 	public void canSetPowerAtAnalogPin() {
-		String pin = "3";
-		String value = "127";
-		simulateChangeAnalogPinMessage(pin, value);
-		assertThat(messagesReceived(), is("alp://ppin/" + pin + "/" + value
-				+ "\n"));
+		int pin = 3;
+		int value = 127;
+		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
+				mqttMessage(value));
+		assertThat(serialReceived(),
+				is(command("ppin").forPin(pin).withValue(value)));
 	}
 
 	@Test
 	public void canHandleInvalidDigitalPayloads() {
 		String pin = "3";
 		String value = "NaN";
-		simulateChangeAnalogPinMessage(pin, value);
-		assertThat(messagesReceived(), is(""));
+		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
+				mqttMessage(value));
+		assertThat(serialReceived(), is(""));
 	}
 
 	@Test
@@ -156,7 +159,7 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
-		simulateArduinoDigitalPinStateChange(value, pin);
+		simulateArduinoMessage(command("dred").forPin(pin).withValue(value));
 		assertThat(published, is(singletonList(new Message(TOPIC + "D" + pin
 				+ "/value/get", mqttMessage(value)))));
 	}
@@ -166,7 +169,8 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
-		simulateArduinoDigitalPinStateChange(value, anyOtherThan(pin));
+		simulateArduinoMessage(command("dred").forPin(anyOtherThan(pin))
+				.withValue(value));
 		assertThat(published, is(Collections.<Message> emptyList()));
 	}
 
@@ -175,7 +179,7 @@ public class MqttTest {
 		int pin = 9;
 		int value = 123;
 		mqttClient.publishAnalogPinOnStateChanges(pin);
-		simulateArduinoAnalogPinStateChange(pin, value);
+		simulateArduinoMessage(command("ared").forPin(pin).withValue(value));
 		assertThat(published, is(singletonList(new Message(TOPIC + "A" + pin
 				+ "/value/get", mqttMessage(value)))));
 	}
@@ -185,7 +189,8 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishAnalogPinOnStateChanges(pin);
-		simulateArduinoAnalogPinStateChange(anyOtherThan(pin), value);
+		simulateArduinoMessage(command("ared").forPin(anyOtherThan(pin))
+				.withValue(value));
 		assertThat(published, is(Collections.<Message> emptyList()));
 	}
 
@@ -193,20 +198,7 @@ public class MqttTest {
 		return ++pin;
 	}
 
-	private void simulateArduinoAnalogPinStateChange(int pin, int value) {
-		simulateArduinoPinStateChange("alp://ared/" + pin + "/" + value);
-	}
-
-	private void simulateArduinoDigitalPinStateChange(int value, int pin) {
-		simulateArduinoPinStateChange("alp://dred/" + pin + "/" + value);
-	}
-
-	private void simulateChangeAnalogPinMessage(String pin, String value) {
-		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
-				mqttMessage(value));
-	}
-
-	private void simulateArduinoPinStateChange(String message) {
+	private void simulateArduinoMessage(String message) {
 		int[] codepoints = toCodepoints(message);
 		connectionContact.parseInput(anyId(), codepoints.length, codepoints);
 	}
@@ -227,7 +219,7 @@ public class MqttTest {
 		return String.valueOf(message);
 	}
 
-	private String messagesReceived() {
+	private String serialReceived() {
 		try {
 			outputStream.close();
 		} catch (IOException e) {
