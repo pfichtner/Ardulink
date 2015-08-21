@@ -1,8 +1,5 @@
 package com.github.pfichtner.ardulink;
 
-import java.util.Arrays;
-
-import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 public class Message {
 

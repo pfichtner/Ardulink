@@ -138,8 +138,7 @@ public class MqttTest {
 	public void canSetPowerAtAnalogPin() {
 		String pin = "3";
 		String value = "127";
-		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
-				mqttMessage(value));
+		simulateChangeAnalogPinMessage(pin, value);
 		assertThat(messagesReceived(), is("alp://ppin/" + pin + "/" + value
 				+ "\n"));
 	}
@@ -148,8 +147,7 @@ public class MqttTest {
 	public void canHandleInvalidDigitalPayloads() {
 		String pin = "3";
 		String value = "NaN";
-		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
-				mqttMessage(value));
+		simulateChangeAnalogPinMessage(pin, value);
 		assertThat(messagesReceived(), is(""));
 	}
 
@@ -158,7 +156,7 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
-		simulateArduinoWrite("alp://dred/" + pin + "/" + value);
+		simulateArduinoDigitalPinStateChange(value, pin);
 		assertThat(published, is(singletonList(new Message(TOPIC + "D" + pin
 				+ "/value/get", mqttMessage(value)))));
 	}
@@ -168,7 +166,7 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishDigitalPinOnStateChanges(pin);
-		simulateArduinoWrite("alp://dred/" + anyOtherThan(pin) + "/" + value);
+		simulateArduinoDigitalPinStateChange(value, anyOtherThan(pin));
 		assertThat(published, is(Collections.<Message> emptyList()));
 	}
 
@@ -177,7 +175,7 @@ public class MqttTest {
 		int pin = 9;
 		int value = 123;
 		mqttClient.publishAnalogPinOnStateChanges(pin);
-		simulateArduinoWrite("alp://ared/" + pin + "/" + value);
+		simulateArduinoAnalogPinStateChange(pin, value);
 		assertThat(published, is(singletonList(new Message(TOPIC + "A" + pin
 				+ "/value/get", mqttMessage(value)))));
 	}
@@ -187,7 +185,7 @@ public class MqttTest {
 		int pin = 0;
 		int value = 1;
 		mqttClient.publishAnalogPinOnStateChanges(pin);
-		simulateArduinoWrite("alp://dred/" + anyOtherThan(pin) + "/" + value);
+		simulateArduinoAnalogPinStateChange(anyOtherThan(pin), value);
 		assertThat(published, is(Collections.<Message> emptyList()));
 	}
 
@@ -195,7 +193,20 @@ public class MqttTest {
 		return ++pin;
 	}
 
-	private void simulateArduinoWrite(String message) {
+	private void simulateArduinoAnalogPinStateChange(int pin, int value) {
+		simulateArduinoPinStateChange("alp://ared/" + pin + "/" + value);
+	}
+
+	private void simulateArduinoDigitalPinStateChange(int value, int pin) {
+		simulateArduinoPinStateChange("alp://dred/" + pin + "/" + value);
+	}
+
+	private void simulateChangeAnalogPinMessage(String pin, String value) {
+		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
+				mqttMessage(value));
+	}
+
+	private void simulateArduinoPinStateChange(String message) {
 		int[] codepoints = toCodepoints(message);
 		connectionContact.parseInput(anyId(), codepoints.length, codepoints);
 	}
