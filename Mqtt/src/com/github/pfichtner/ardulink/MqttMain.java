@@ -58,9 +58,10 @@ public class MqttMain {
 				throws MqttSecurityException, MqttException {
 			super(link, new LinkMessageCallback() {
 				@Override
-				public void publish(String topic, MqttMessage message) {
+				public void fromArduino(String topic, String message) {
 					try {
-						mqttClient.publish(topic, message);
+						mqttClient.publish(topic,
+								new MqttMessage(message.getBytes()));
 					} catch (MqttPersistenceException e) {
 						throw new RuntimeException(e);
 					} catch (MqttException e) {
@@ -94,7 +95,8 @@ public class MqttMain {
 
 				public void messageArrived(String topic, MqttMessage message)
 						throws IOException {
-					EMqttClient.this.messageArrived(topic, message);
+					EMqttClient.this.toArduino(topic,
+							new String(message.getPayload()));
 				}
 
 				public void deliveryComplete(IMqttDeliveryToken token) {

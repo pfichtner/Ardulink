@@ -7,7 +7,6 @@ import static org.zu.ardulink.protocol.IProtocol.POWER_LOW;
 
 import java.util.regex.Matcher;
 
-import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.event.AnalogReadChangeEvent;
 import org.zu.ardulink.event.AnalogReadChangeListener;
@@ -26,7 +25,7 @@ public class MqttClient {
 		 * @param message
 		 *            the payload to send
 		 */
-		void publish(String topic, MqttMessage message);
+		void fromArduino(String topic, String message);
 	}
 
 	private final Link link;
@@ -50,19 +49,19 @@ public class MqttClient {
 	 * @param message
 	 *            the payload
 	 */
-	public void messageArrived(String topic, MqttMessage message) {
+	public void toArduino(String topic, String message) {
 		if (!handleDigital(topic, message)) {
 			handleAnalog(topic, message);
 		}
 	}
 
-	private boolean handleDigital(String topic, MqttMessage message) {
+	private boolean handleDigital(String topic, String message) {
 		Matcher matcher = this.config.getTopicPatternDigitalWrite().matcher(
 				topic);
 		if (matcher.matches()) {
 			Integer pin = tryParse(matcher.group(1));
 			if (pin != null) {
-				boolean state = parseBoolean(new String(message.getPayload()));
+				boolean state = parseBoolean(message);
 				this.link.sendPowerPinSwitch(pin.intValue(), state ? POWER_HIGH
 						: POWER_LOW);
 				return true;
@@ -71,12 +70,12 @@ public class MqttClient {
 		return false;
 	}
 
-	private boolean handleAnalog(String topic, MqttMessage message) {
+	private boolean handleAnalog(String topic, String message) {
 		Matcher matcher = this.config.getTopicPatternAnalogWrite().matcher(
 				topic);
 		if (matcher.matches()) {
 			Integer pin = tryParse(matcher.group(1));
-			Integer intensity = tryParse(new String(message.getPayload()));
+			Integer intensity = tryParse(message);
 			if (pin != null && intensity != null) {
 				this.link.sendPowerPinIntensity(pin.intValue(),
 						intensity.intValue());
@@ -98,9 +97,9 @@ public class MqttClient {
 		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
-				linkMessageCallback.publish(
+				linkMessageCallback.fromArduino(
 						format(config.getTopicPatternDigitalRead(), e.getPin()),
-						new MqttMessage(String.valueOf(e.getValue()).getBytes()));
+						String.valueOf(e.getValue()));
 			}
 
 			@Override
@@ -114,9 +113,9 @@ public class MqttClient {
 		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
-				linkMessageCallback.publish(
+				linkMessageCallback.fromArduino(
 						format(config.getTopicPatternAnalogRead(), e.getPin()),
-						new MqttMessage(String.valueOf(e.getValue()).getBytes()));
+						String.valueOf(e.getValue()));
 			}
 
 			@Override

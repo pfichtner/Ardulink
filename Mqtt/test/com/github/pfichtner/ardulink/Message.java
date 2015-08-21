@@ -7,9 +7,9 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 public class Message {
 
 	private final String topic;
-	private final MqttMessage message;
+	private final String message;
 
-	public Message(String topic, MqttMessage message) {
+	public Message(String topic, String message) {
 		this.topic = topic;
 		this.message = message;
 	}
@@ -18,7 +18,7 @@ public class Message {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((message == null) ? 0 : Arrays.hashCode(message.getPayload()));
+		result = prime * result + ((message == null) ? 0 : message.hashCode());
 		result = prime * result + ((topic == null) ? 0 : topic.hashCode());
 		return result;
 	}
@@ -35,8 +35,7 @@ public class Message {
 		if (message == null) {
 			if (other.message != null)
 				return false;
-		} else if (!Arrays.equals(message.getPayload(),
-				other.message.getPayload()))
+		} else if (!message.equals(other.message))
 			return false;
 		if (topic == null) {
 			if (other.topic != null)

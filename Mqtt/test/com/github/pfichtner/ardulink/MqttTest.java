@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,7 +41,7 @@ public class MqttTest {
 	private final MqttClient mqttClient = new MqttClient(link,
 			new LinkMessageCallback() {
 				@Override
-				public void publish(String topic, MqttMessage message) {
+				public void fromArduino(String topic, String message) {
 					published.add(new Message(topic, message));
 				}
 
@@ -118,19 +117,19 @@ public class MqttTest {
 
 	@Test
 	public void canPowerOnDigitalPin() {
-		mqttClient.messageArrived(TOPIC + "D0/value/set", mqttMessage("true"));
+		mqttClient.toArduino(TOPIC + "D0/value/set", mqttMessage("true"));
 		assertThat(messagesReceived(), is("alp://ppsw/0/1\n"));
 	}
 
 	@Test
 	public void canHandleInvalidTopics() {
-		mqttClient.messageArrived(TOPIC + "invalidTopic", mqttMessage("true"));
+		mqttClient.toArduino(TOPIC + "invalidTopic", mqttMessage("true"));
 		assertThat(messagesReceived(), is(""));
 	}
 
 	@Test
 	public void canHandleInvalidBooleanPayloads() {
-		mqttClient.messageArrived(TOPIC + "D0/value/set",
+		mqttClient.toArduino(TOPIC + "D0/value/set",
 				mqttMessage("xxxxxxxxxxxxxxxx"));
 		assertThat(messagesReceived(), is("alp://ppsw/0/0\n"));
 	}
@@ -139,7 +138,7 @@ public class MqttTest {
 	public void canSetPowerAtAnalogPin() {
 		String pin = "3";
 		String value = "127";
-		mqttClient.messageArrived(TOPIC + "A" + pin + "/value/set",
+		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
 				mqttMessage(value));
 		assertThat(messagesReceived(), is("alp://ppin/" + pin + "/" + value
 				+ "\n"));
@@ -149,7 +148,7 @@ public class MqttTest {
 	public void canHandleInvalidDigitalPayloads() {
 		String pin = "3";
 		String value = "NaN";
-		mqttClient.messageArrived(TOPIC + "A" + pin + "/value/set",
+		mqttClient.toArduino(TOPIC + "A" + pin + "/value/set",
 				mqttMessage(value));
 	}
 
@@ -212,8 +211,8 @@ public class MqttTest {
 		return codepoints;
 	}
 
-	private MqttMessage mqttMessage(Object message) {
-		return new MqttMessage(String.valueOf(message).getBytes());
+	private String mqttMessage(Object message) {
+		return String.valueOf(message);
 	}
 
 	private String messagesReceived() {
