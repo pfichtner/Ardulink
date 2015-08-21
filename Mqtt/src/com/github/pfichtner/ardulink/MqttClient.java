@@ -93,7 +93,7 @@ public class MqttClient {
 		}
 	}
 
-	public void publishDigitalPinOnStateChanges(final int pin) {
+	public void enableDigitalPinChangeEvents(final int pin) {
 		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
@@ -109,7 +109,7 @@ public class MqttClient {
 		});
 	}
 
-	public void publishAnalogPinOnStateChanges(final int pin) {
+	public void enableAnalogPinChangeEvents(final int pin) {
 		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {

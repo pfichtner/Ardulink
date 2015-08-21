@@ -1,18 +1,24 @@
 package com.github.pfichtner.ardulink;
 
+import static java.lang.String.format;
+
 public class MqttMessageBuilder {
 
-	private final String topic;
+	private final String basicTopic;
 	private int pin;
 	private String type;
 	private Object value;
 
-	public static MqttMessageBuilder messageWithBasicTopic(String topic) {
-		return new MqttMessageBuilder(topic);
+	public static MqttMessageBuilder messageWithBasicTopic(String basicTopic) {
+		return new MqttMessageBuilder(basicTopic);
 	}
 
-	private MqttMessageBuilder(String topic) {
-		this.topic = topic;
+	private MqttMessageBuilder(String basicTopic) {
+		this.basicTopic = normalize(basicTopic);
+	}
+
+	private static String normalize(String string) {
+		return string.replaceAll("/$", "");
 	}
 
 	public MqttMessageBuilder forDigitalPin(int pin) {
@@ -43,8 +49,8 @@ public class MqttMessageBuilder {
 	}
 
 	private Message createMessage(String msgType) {
-		return new Message(topic + type + pin + "/value/" + msgType,
-				mqttMessage(value));
+		return new Message(format("%s/%s%s/value/%s", basicTopic, type, pin,
+				msgType), mqttMessage(value));
 	}
 
 	private String mqttMessage(Object message) {

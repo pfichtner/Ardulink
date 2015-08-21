@@ -70,10 +70,10 @@ public class MqttMain {
 				}
 			}, config);
 			for (int analogPin : analogs) {
-				publishAnalogPinOnStateChanges(analogPin);
+				enableAnalogPinChangeEvents(analogPin);
 			}
 			for (int digitalPin : digitals) {
-				publishDigitalPinOnStateChanges(digitalPin);
+				enableDigitalPinChangeEvents(digitalPin);
 			}
 			this.client = newClient(brokerHost, brokerPort, clientId);
 			this.client.setCallback(new MqttCallback() {
