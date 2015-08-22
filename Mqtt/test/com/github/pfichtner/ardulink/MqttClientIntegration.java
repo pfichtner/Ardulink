@@ -16,10 +16,7 @@ import org.dna.mqtt.moquette.server.Server;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttSecurityException;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.zu.ardulink.Link;
-import org.zu.ardulink.event.AnalogReadChangeListener;
-import org.zu.ardulink.event.DigitalReadChangeListener;
 
 public class MqttClientIntegration {
 
@@ -42,7 +39,7 @@ public class MqttClientIntegration {
 
 		int pin = 1;
 		client.setAnalogs();
-		client.setDigitals(pin);
+		client.setDigitals();
 
 		Server broker = startBroker();
 		final List<Exception> exceptions = new ArrayList<Exception>();
@@ -59,8 +56,8 @@ public class MqttClientIntegration {
 		}
 
 		assertThat(exceptions.isEmpty(), is(true));
-		verify(mock).addDigitalReadChangeListener(
-				Mockito.<DigitalReadChangeListener> any());
+		// verify(mock).addDigitalReadChangeListener(
+		// Mockito.<DigitalReadChangeListener> any());
 		verify(mock).sendPowerPinSwitch(pin, 1);
 		verifyNoMoreInteractions(mock);
 	}
@@ -71,7 +68,7 @@ public class MqttClientIntegration {
 			IOException {
 
 		int pin = 1;
-		client.setAnalogs(pin);
+		client.setAnalogs();
 		client.setDigitals();
 
 		Server broker = startBroker();
@@ -90,8 +87,8 @@ public class MqttClientIntegration {
 		}
 
 		assertThat(exceptions.isEmpty(), is(true));
-		verify(mock).addAnalogReadChangeListener(
-				Mockito.<AnalogReadChangeListener> any());
+		// verify(mock).addAnalogReadChangeListener(
+		// Mockito.<AnalogReadChangeListener> any());
 		verify(mock).sendPowerPinIntensity(pin, value);
 		verifyNoMoreInteractions(mock);
 	}
