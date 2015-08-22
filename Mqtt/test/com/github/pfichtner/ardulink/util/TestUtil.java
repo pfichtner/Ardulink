@@ -1,5 +1,7 @@
 package com.github.pfichtner.ardulink.util;
 
+import static java.util.Collections.singletonList;
+
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.List;
@@ -24,7 +26,7 @@ public final class TestUtil {
 
 			@Override
 			public List<String> getPortList() {
-				throw new IllegalStateException();
+				return singletonList("/dev/null");
 			}
 
 			@Override

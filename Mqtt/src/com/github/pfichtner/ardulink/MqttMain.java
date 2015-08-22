@@ -5,6 +5,7 @@ import static java.lang.Boolean.TRUE;
 import static org.zu.ardulink.connection.proxy.NetworkProxyServer.DEFAULT_LISTENING_PORT;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -38,7 +39,7 @@ public class MqttMain {
 	private String publishClientInfoTopic;
 
 	@Option(name = "-d", aliases = "--digital", usage = "Digital pins to listen to")
-	private int[] digitals = new int[] { 2 };
+	private int[] digitals = new int[0];
 
 	@Option(name = "-a", aliases = "--analog", usage = "Analog pins to listen to")
 	private int[] analogs = new int[0];
@@ -172,8 +173,7 @@ public class MqttMain {
 		// ensure brokerTopic is normalized
 		setBrokerTopic(this.brokerTopic);
 
-		mqttClient = new MqttClient(createLink(),
-				Config.withTopic(this.brokerTopic));
+		createClient();
 		try {
 			wait4ever();
 		} finally {
@@ -182,9 +182,22 @@ public class MqttMain {
 
 	}
 
-	protected void createClient() throws MqttSecurityException, MqttException {
-		mqttClient = new MqttClient(createLink(),
+	protected void createClient() throws MqttSecurityException, MqttException,
+			InterruptedException {
+		mqttClient = new MqttClient(connect(createLink()),
 				Config.withTopic(this.brokerTopic));
+	}
+
+	private Link connect(Link link) throws InterruptedException {
+		List<String> portList = link.getPortList();
+		if (portList == null || portList.isEmpty()) {
+			throw new RuntimeException("No port found!");
+		}
+		if (!link.connect(portList.get(0), 115200)) {
+			throw new RuntimeException("Connection failed!");
+		}
+		TimeUnit.SECONDS.sleep(1);
+		return link;
 	}
 
 	private org.eclipse.paho.client.mqttv3.MqttClient newClient(String host,
