@@ -18,7 +18,10 @@ import org.eclipse.paho.client.mqttv3.MqttSecurityException;
 import org.junit.Test;
 import org.zu.ardulink.Link;
 
-public class MqttClientIntegration {
+import com.github.pfichtner.ardulink.util.AnotherMqttClient;
+import com.github.pfichtner.ardulink.util.StopWatch;
+
+public class MqttClientIntegrationReceive {
 
 	private static final long TIMEOUT = 10 * 1000;;
 

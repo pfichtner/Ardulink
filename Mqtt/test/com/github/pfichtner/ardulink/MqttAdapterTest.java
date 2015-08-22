@@ -2,14 +2,16 @@ package com.github.pfichtner.ardulink;
 
 import static com.github.pfichtner.ardulink.util.MqttMessageBuilder.messageWithBasicTopic;
 import static com.github.pfichtner.ardulink.util.ProtoBuilder.arduinoCommand;
+import static com.github.pfichtner.ardulink.util.TestUtil.createConnection;
+import static com.github.pfichtner.ardulink.util.TestUtil.getField;
+import static com.github.pfichtner.ardulink.util.TestUtil.set;
+import static com.github.pfichtner.ardulink.util.TestUtil.toCodepoints;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,7 +23,6 @@ import org.zu.ardulink.ConnectionContactImpl;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.connection.Connection;
 import org.zu.ardulink.connection.ConnectionContact;
-import org.zu.ardulink.connection.serial.AbstractSerialConnection;
 
 import com.github.pfichtner.ardulink.util.Message;
 
@@ -57,27 +58,6 @@ public class MqttAdapterTest {
 
 	}
 
-	private static Field getField(Object target, String fieldName) {
-		try {
-			return target.getClass().getDeclaredField(fieldName);
-		} catch (NoSuchFieldException e) {
-			throw new IllegalStateException(e);
-		} catch (SecurityException e) {
-			throw new IllegalStateException(e);
-		}
-	}
-
-	private static void set(Object target, Field field, Object instance) {
-		field.setAccessible(true);
-		try {
-			field.set(target, instance);
-		} catch (IllegalArgumentException e) {
-			throw new IllegalStateException(e);
-		} catch (IllegalAccessException e) {
-			throw new IllegalStateException(e);
-		}
-	}
-
 	@Before
 	public void setup() {
 		link.connect();
@@ -87,33 +67,6 @@ public class MqttAdapterTest {
 	public void tearDown() {
 		link.disconnect();
 		Link.destroyInstance(LINKNAME);
-	}
-
-	private static Connection createConnection(final OutputStream outputStream,
-			ConnectionContact connectionContact) {
-		return new AbstractSerialConnection(connectionContact) {
-
-			{
-				setOutputStream(outputStream);
-			}
-
-			@Override
-			public List<String> getPortList() {
-				throw new IllegalStateException();
-			}
-
-			@Override
-			public boolean disconnect() {
-				setConnected(false);
-				return isConnected();
-			}
-
-			@Override
-			public boolean connect(Object... params) {
-				setConnected(true);
-				return isConnected();
-			}
-		};
 	}
 
 	@Test
@@ -214,14 +167,6 @@ public class MqttAdapterTest {
 
 	private String anyId() {
 		return "randomId";
-	}
-
-	private int[] toCodepoints(String message) {
-		int[] codepoints = new int[message.length()];
-		for (int i = 0; i < message.length(); i++) {
-			codepoints[i] = message.codePointAt(i);
-		}
-		return codepoints;
 	}
 
 	private void simulateMqttToArduino(Message message) {
