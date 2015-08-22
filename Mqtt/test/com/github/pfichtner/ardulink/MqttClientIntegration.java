@@ -1,5 +1,7 @@
 package com.github.pfichtner.ardulink;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -12,16 +14,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.dna.mqtt.moquette.server.Server;
 import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.MqttPersistenceException;
 import org.eclipse.paho.client.mqttv3.MqttSecurityException;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.event.DigitalReadChangeListener;
-
-import com.github.pfichtner.ardulink.util.Message;
-import com.github.pfichtner.ardulink.util.MqttMessageBuilder;
 
 public class MqttClientIntegration {
 
@@ -44,14 +41,14 @@ public class MqttClientIntegration {
 		final List<Exception> exceptions = new ArrayList<Exception>();
 		try {
 			String topic = "foo/bar";
-			org.eclipse.paho.client.mqttv3.MqttClient mqttClient = mqttClient();
+			AnotherMqttClient amc = new AnotherMqttClient(topic);
 
 			try {
 				startClientInBackground(exceptions, client, topic);
-				switchDigitalPin(mqttClient, topic, 1, true);
+				amc.switchDigitalPin(1, true);
 				TimeUnit.SECONDS.sleep(3);
 			} finally {
-				mqttClient.disconnect();
+				amc.disconnect();
 			}
 		} finally {
 			broker.stopServer();
@@ -62,25 +59,6 @@ public class MqttClientIntegration {
 				Mockito.<DigitalReadChangeListener> any());
 		verify(mock).sendPowerPinSwitch(1, 1);
 		verifyNoMoreInteractions(mock);
-	}
-
-	private void switchDigitalPin(
-			org.eclipse.paho.client.mqttv3.MqttClient mqttClient, String topic,
-			int pin, Object value) throws MqttPersistenceException,
-			MqttException {
-		Message msg = MqttMessageBuilder.messageWithBasicTopic(topic)
-				.forDigitalPin(pin).withValue(value).createSetMessage();
-		mqttClient.publish(msg.getTopic(), new MqttMessage(msg.getMessage()
-				.getBytes()));
-
-	}
-
-	private org.eclipse.paho.client.mqttv3.MqttClient mqttClient()
-			throws MqttException, MqttSecurityException {
-		org.eclipse.paho.client.mqttv3.MqttClient mqttClient = new org.eclipse.paho.client.mqttv3.MqttClient(
-				"tcp://localhost:1883", "clientId");
-		mqttClient.connect();
-		return mqttClient;
 	}
 
 	private Server startBroker() throws IOException {
@@ -113,11 +91,13 @@ public class MqttClientIntegration {
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
 		while (!client.isConnected()) {
-			TimeUnit.MILLISECONDS.sleep(250);
-			if (stopWatch.getTime() > TimeUnit.SECONDS.toMillis(5)) {
-				throw new IllegalStateException(
-						"Could not connect within 5 seconds");
+			MILLISECONDS.sleep(250);
+			int secs = 5;
+			if (stopWatch.getTime() > SECONDS.toMillis(secs)) {
+				throw new IllegalStateException("Could not connect within "
+						+ secs + " seconds");
 			}
 		}
 	}
+
 }
