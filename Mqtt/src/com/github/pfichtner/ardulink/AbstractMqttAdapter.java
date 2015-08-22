@@ -13,30 +13,14 @@ import org.zu.ardulink.event.AnalogReadChangeListener;
 import org.zu.ardulink.event.DigitalReadChangeEvent;
 import org.zu.ardulink.event.DigitalReadChangeListener;
 
-public class MqttClient {
-
-	public interface LinkMessageCallback {
-		/**
-		 * This method is called by Ardulink-Mqtt when an observed analog or
-		 * digital pin changed its state.
-		 * 
-		 * @param topic
-		 *            the topic to send to
-		 * @param message
-		 *            the payload to send
-		 */
-		void fromArduino(String topic, String message);
-	}
+public abstract class AbstractMqttAdapter {
 
 	private final Link link;
-	private final LinkMessageCallback linkMessageCallback;
 
 	private final Config config;
 
-	public MqttClient(Link link, LinkMessageCallback linkMessageCallback,
-			Config config) {
+	public AbstractMqttAdapter(Link link, Config config) {
 		this.link = link;
-		this.linkMessageCallback = linkMessageCallback;
 		this.config = config;
 	}
 
@@ -97,7 +81,7 @@ public class MqttClient {
 		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
-				linkMessageCallback.fromArduino(
+				fromArduino(
 						format(config.getTopicPatternDigitalRead(), e.getPin()),
 						String.valueOf(e.getValue()));
 			}
@@ -113,7 +97,7 @@ public class MqttClient {
 		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
-				linkMessageCallback.fromArduino(
+				fromArduino(
 						format(config.getTopicPatternAnalogRead(), e.getPin()),
 						String.valueOf(e.getValue()));
 			}
@@ -124,5 +108,7 @@ public class MqttClient {
 			}
 		});
 	}
+
+	abstract void fromArduino(String topic, String message);
 
 }

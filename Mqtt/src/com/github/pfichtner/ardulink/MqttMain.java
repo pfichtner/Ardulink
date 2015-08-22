@@ -46,29 +46,17 @@ public class MqttMain {
 	@Option(name = "-remote", usage = "Host and port of a remote arduino")
 	private String remote;
 
-	private EMqttClient mqttClient;
+	private MqttClient mqttClient;
 
-	private class EMqttClient extends MqttClient {
+	private class MqttClient extends AbstractMqttAdapter {
 
 		private static final boolean RETAINED = true;
 
 		private org.eclipse.paho.client.mqttv3.MqttClient client;
 
-		public EMqttClient(Link link, Config config)
+		private MqttClient(Link link, Config config)
 				throws MqttSecurityException, MqttException {
-			super(link, new LinkMessageCallback() {
-				@Override
-				public void fromArduino(String topic, String message) {
-					try {
-						mqttClient.publish(topic,
-								new MqttMessage(message.getBytes()));
-					} catch (MqttPersistenceException e) {
-						throw new RuntimeException(e);
-					} catch (MqttException e) {
-						throw new RuntimeException(e);
-					}
-				}
-			}, config);
+			super(link, config);
 			for (int analogPin : analogs) {
 				enableAnalogPinChangeEvents(analogPin);
 			}
@@ -90,12 +78,12 @@ public class MqttMain {
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-					} while (!EMqttClient.this.client.isConnected());
+					} while (!MqttClient.this.client.isConnected());
 				}
 
 				public void messageArrived(String topic, MqttMessage message)
 						throws IOException {
-					EMqttClient.this.toArduino(topic,
+					MqttClient.this.toArduino(topic,
 							new String(message.getPayload()));
 				}
 
@@ -107,11 +95,15 @@ public class MqttMain {
 			subscribe();
 		}
 
-		private org.eclipse.paho.client.mqttv3.MqttClient newClient(
-				String host, int port, String clientId) throws MqttException,
-				MqttSecurityException {
-			return new org.eclipse.paho.client.mqttv3.MqttClient("tcp://"
-					+ host + ":" + port, clientId);
+		@Override
+		public void fromArduino(String topic, String message) {
+			try {
+				publish(topic, message);
+			} catch (MqttPersistenceException e) {
+				throw new RuntimeException(e);
+			} catch (MqttException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		private void connect() throws MqttSecurityException, MqttException {
@@ -123,16 +115,6 @@ public class MqttMain {
 			client.subscribe(brokerTopic + '#');
 		}
 
-		public void publish(String topic, MqttMessage message)
-				throws MqttPersistenceException, MqttException {
-			client.publish(topic, message);
-		}
-
-		public void publishRetained(String topic, String message)
-				throws MqttPersistenceException, MqttException {
-			client.publish(topic, message.getBytes(), 0, RETAINED);
-		}
-
 		public void close() throws MqttException {
 			client.disconnect();
 			client.close();
@@ -140,11 +122,33 @@ public class MqttMain {
 
 		private MqttConnectOptions mqttConnectOptions() {
 			MqttConnectOptions options = new MqttConnectOptions();
-			if (publishClientStatus()) {
-				options.setWill(publishClientInfoTopic, FALSE.toString()
-						.getBytes(), 0, RETAINED);
+			String clientInfoTopic = publishClientInfoTopic;
+			if (!nullOrEmpty(clientInfoTopic)) {
+				options.setWill(clientInfoTopic, FALSE.toString().getBytes(),
+						0, RETAINED);
 			}
 			return options;
+		}
+
+		private void publish(String topic, String message)
+				throws MqttException, MqttPersistenceException {
+			client.publish(topic, new MqttMessage(message.getBytes()));
+		}
+
+		private void publishClientStatus(Boolean state) throws MqttException,
+				MqttPersistenceException {
+			if (!nullOrEmpty(publishClientInfoTopic)) {
+				client.publish(publishClientInfoTopic, state.toString()
+						.getBytes(), 0, RETAINED);
+			}
+		}
+
+		public boolean isConnected() {
+			return client.isConnected();
+		}
+
+		private boolean nullOrEmpty(String string) {
+			return string == null || string.isEmpty();
 		}
 
 	}
@@ -168,7 +172,7 @@ public class MqttMain {
 		// ensure brokerTopic is normalized
 		setBrokerTopic(this.brokerTopic);
 
-		mqttClient = new EMqttClient(createLink(),
+		mqttClient = new MqttClient(createLink(),
 				Config.withTopic(this.brokerTopic));
 		try {
 			wait4ever();
@@ -178,7 +182,14 @@ public class MqttMain {
 
 	}
 
-	private Link createLink() {
+	private org.eclipse.paho.client.mqttv3.MqttClient newClient(String host,
+			int port, String clientId) throws MqttException,
+			MqttSecurityException {
+		return new org.eclipse.paho.client.mqttv3.MqttClient("tcp://" + host
+				+ ":" + port, clientId);
+	}
+
+	protected Link createLink() {
 		if (remote == null || remote.isEmpty()) {
 			return Link.getDefaultInstance();
 		}
@@ -199,24 +210,15 @@ public class MqttMain {
 				: brokerTopic + '/';
 	}
 
+	public boolean isConnected() {
+		return mqttClient != null && mqttClient.isConnected();
+	}
+
 	private static void wait4ever() throws InterruptedException {
 		Object blocker = new Object();
 		synchronized (blocker) {
 			blocker.wait();
 		}
-	}
-
-	private void publishClientStatus(Boolean state) throws MqttException,
-			MqttPersistenceException {
-		if (publishClientStatus()) {
-			this.mqttClient.publishRetained(this.publishClientInfoTopic,
-					state.toString());
-		}
-	}
-
-	private boolean publishClientStatus() {
-		return this.publishClientInfoTopic != null
-				&& !this.publishClientInfoTopic.isEmpty();
 	}
 
 }

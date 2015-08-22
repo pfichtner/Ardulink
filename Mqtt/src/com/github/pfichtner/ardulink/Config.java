@@ -58,6 +58,7 @@ public abstract class Config {
 			public String getTopicPatternAnalogRead() {
 				return topicPatternAnalogRead;
 			}
+
 		};
 	}
 
