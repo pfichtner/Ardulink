@@ -182,6 +182,11 @@ public class MqttMain {
 
 	}
 
+	protected void createClient() throws MqttSecurityException, MqttException {
+		mqttClient = new MqttClient(createLink(),
+				Config.withTopic(this.brokerTopic));
+	}
+
 	private org.eclipse.paho.client.mqttv3.MqttClient newClient(String host,
 			int port, String clientId) throws MqttException,
 			MqttSecurityException {
@@ -208,6 +213,14 @@ public class MqttMain {
 	public void setBrokerTopic(String brokerTopic) {
 		this.brokerTopic = brokerTopic.endsWith("/") ? brokerTopic
 				: brokerTopic + '/';
+	}
+
+	public void setAnalogs(int... analogs) {
+		this.analogs = analogs == null ? new int[0] : analogs.clone();
+	}
+
+	public void setDigitals(int... digitals) {
+		this.digitals = digitals == null ? new int[0] : digitals.clone();
 	}
 
 	public boolean isConnected() {

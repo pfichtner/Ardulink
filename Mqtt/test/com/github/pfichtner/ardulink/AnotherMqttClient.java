@@ -22,19 +22,37 @@ public class AnotherMqttClient {
 
 	private static MqttClient mqttClient() throws MqttException,
 			MqttSecurityException {
-		MqttClient mqttClient = new MqttClient("tcp://localhost:1883",
-				"anotherMqttClient");
+		return new MqttClient("tcp://localhost:1883", "anotherMqttClient");
+	}
+
+	public AnotherMqttClient connect() throws MqttSecurityException,
+			MqttException {
 		mqttClient.connect();
-		return mqttClient;
+		return this;
 	}
 
 	public void switchDigitalPin(int pin, Object value)
 			throws MqttPersistenceException, MqttException {
-		Message msg = MqttMessageBuilder.messageWithBasicTopic(topic)
-				.forDigitalPin(pin).withValue(value).createSetMessage();
+		sendMessage(createSetMessage(newMsgBuilder().forDigitalPin(pin), value));
+	}
+
+	public void switchAnalogPin(int pin, Object value)
+			throws MqttPersistenceException, MqttException {
+		sendMessage(createSetMessage(newMsgBuilder().forAnalogPin(pin), value));
+	}
+
+	private Message createSetMessage(MqttMessageBuilder msgBuilder, Object value) {
+		return msgBuilder.withValue(value).createSetMessage();
+	}
+
+	private MqttMessageBuilder newMsgBuilder() {
+		return MqttMessageBuilder.messageWithBasicTopic(topic);
+	}
+
+	private void sendMessage(Message msg) throws MqttException,
+			MqttPersistenceException {
 		mqttClient.publish(msg.getTopic(), new MqttMessage(msg.getMessage()
 				.getBytes()));
-
 	}
 
 	public void disconnect() throws MqttException {

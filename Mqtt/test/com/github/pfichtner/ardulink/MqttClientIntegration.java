@@ -2,7 +2,8 @@ package com.github.pfichtner.ardulink;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -10,7 +11,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.dna.mqtt.moquette.server.Server;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -18,35 +18,39 @@ import org.eclipse.paho.client.mqttv3.MqttSecurityException;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zu.ardulink.Link;
+import org.zu.ardulink.event.AnalogReadChangeListener;
 import org.zu.ardulink.event.DigitalReadChangeListener;
 
 public class MqttClientIntegration {
 
 	private static final long TIMEOUT = 10 * 1000;;
 
+	private final Link mock = mock(Link.class);
+	private MqttMain client = new MqttMain() {
+		@Override
+		protected Link createLink() {
+			return mock;
+		}
+	};
+
+	private static final String TOPIC = "foo/bar";
+
 	@Test(timeout = TIMEOUT)
 	public void processesBrockerEventPowerOnDigitalPin()
 			throws InterruptedException, MqttSecurityException, MqttException,
 			IOException {
 
-		final Link mock = mock(Link.class);
-		MqttMain client = new MqttMain() {
-			@Override
-			protected Link createLink() {
-				return mock;
-			}
-		};
+		int pin = 1;
+		client.setAnalogs();
+		client.setDigitals(pin);
 
 		Server broker = startBroker();
 		final List<Exception> exceptions = new ArrayList<Exception>();
 		try {
-			String topic = "foo/bar";
-			AnotherMqttClient amc = new AnotherMqttClient(topic);
-
+			AnotherMqttClient amc = new AnotherMqttClient(TOPIC).connect();
 			try {
-				startClientInBackground(exceptions, client, topic);
-				amc.switchDigitalPin(1, true);
-				TimeUnit.SECONDS.sleep(3);
+				startClientInBackground(exceptions, client, TOPIC);
+				amc.switchDigitalPin(pin, true);
 			} finally {
 				amc.disconnect();
 			}
@@ -54,10 +58,41 @@ public class MqttClientIntegration {
 			broker.stopServer();
 		}
 
-		assertTrue(exceptions.isEmpty());
+		assertThat(exceptions.isEmpty(), is(true));
 		verify(mock).addDigitalReadChangeListener(
 				Mockito.<DigitalReadChangeListener> any());
-		verify(mock).sendPowerPinSwitch(1, 1);
+		verify(mock).sendPowerPinSwitch(pin, 1);
+		verifyNoMoreInteractions(mock);
+	}
+
+	@Test(timeout = TIMEOUT)
+	public void processesBrockerEventPowerOnAnalogPin()
+			throws InterruptedException, MqttSecurityException, MqttException,
+			IOException {
+
+		int pin = 1;
+		client.setAnalogs(pin);
+		client.setDigitals();
+
+		Server broker = startBroker();
+		final List<Exception> exceptions = new ArrayList<Exception>();
+		int value = 123;
+		try {
+			AnotherMqttClient amc = new AnotherMqttClient(TOPIC).connect();
+			try {
+				startClientInBackground(exceptions, client, TOPIC);
+				amc.switchAnalogPin(pin, value);
+			} finally {
+				amc.disconnect();
+			}
+		} finally {
+			broker.stopServer();
+		}
+
+		assertThat(exceptions.isEmpty(), is(true));
+		verify(mock).addAnalogReadChangeListener(
+				Mockito.<AnalogReadChangeListener> any());
+		verify(mock).sendPowerPinIntensity(pin, value);
 		verifyNoMoreInteractions(mock);
 	}
 
@@ -88,8 +123,7 @@ public class MqttClientIntegration {
 				}
 			}
 		};
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		StopWatch stopWatch = new StopWatch().start();
 		while (!client.isConnected()) {
 			MILLISECONDS.sleep(250);
 			int secs = 5;
