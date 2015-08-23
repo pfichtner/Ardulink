@@ -1,6 +1,7 @@
 package com.github.pfichtner.ardulink;
 
 import static java.lang.Boolean.parseBoolean;
+import static java.lang.Math.abs;
 import static java.lang.String.format;
 import static org.zu.ardulink.protocol.IProtocol.POWER_HIGH;
 import static org.zu.ardulink.protocol.IProtocol.POWER_LOW;
@@ -142,9 +143,10 @@ public abstract class AbstractMqttAdapter {
 
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
+				int newValue = e.getValue();
 				if (this.value == null
-						|| Math.abs(this.value - e.getValue()) > tolerance) {
-					this.value = Integer.valueOf(e.getValue());
+						|| abs(this.value.intValue() - newValue) > tolerance) {
+					this.value = Integer.valueOf(newValue);
 					delegate.stateChanged(e);
 				}
 			}
