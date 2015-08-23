@@ -44,6 +44,9 @@ public class MqttMain {
 	@Option(name = "-a", aliases = "--analog", usage = "Analog pins to listen to")
 	private int[] analogs = new int[0];
 
+	@Option(name = "-at", aliases = "--tolerance", usage = "Analog tolerance, publich only changes exceeding this value")
+	private int tolerance = 3;
+
 	@Option(name = "-remote", usage = "Host and port of a remote arduino")
 	private String remote;
 
@@ -91,7 +94,7 @@ public class MqttMain {
 			connect();
 			subscribe();
 			for (int analogPin : analogs) {
-				enableAnalogPinChangeEvents(analogPin);
+				enableAnalogPinChangeEvents(analogPin, tolerance);
 			}
 			for (int digitalPin : digitals) {
 				enableDigitalPinChangeEvents(digitalPin);

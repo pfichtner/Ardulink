@@ -128,8 +128,40 @@ public abstract class AbstractMqttAdapter {
 		});
 	}
 
+	public void enableAnalogPinChangeEvents(final int pin, final int tolerance) {
+		AnalogReadChangeListener delegate = newAnalogReadChangeListener(pin);
+		link.addAnalogReadChangeListener(tolerance == 0 ? delegate
+				: toleranceAdapter(tolerance, delegate));
+	}
+
+	private static AnalogReadChangeListener toleranceAdapter(
+			final int tolerance, final AnalogReadChangeListener delegate) {
+		return new AnalogReadChangeListener() {
+
+			private Integer value;
+
+			@Override
+			public void stateChanged(AnalogReadChangeEvent e) {
+				if (this.value == null
+						|| Math.abs(this.value - e.getValue()) > tolerance) {
+					this.value = Integer.valueOf(e.getValue());
+					delegate.stateChanged(e);
+				}
+			}
+
+			@Override
+			public int getPinListening() {
+				return delegate.getPinListening();
+			}
+		};
+	}
+
 	public void enableAnalogPinChangeEvents(final int pin) {
-		link.addAnalogReadChangeListener(new AnalogReadChangeListener() {
+		link.addAnalogReadChangeListener(newAnalogReadChangeListener(pin));
+	}
+
+	private AnalogReadChangeListener newAnalogReadChangeListener(final int pin) {
+		return new AnalogReadChangeListener() {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
 				fromArduino(
@@ -141,7 +173,7 @@ public abstract class AbstractMqttAdapter {
 			public int getPinListening() {
 				return pin;
 			}
-		});
+		};
 	}
 
 	abstract void fromArduino(String topic, String message);
