@@ -6,6 +6,7 @@ import static org.zu.ardulink.protocol.IProtocol.POWER_HIGH;
 import static org.zu.ardulink.protocol.IProtocol.POWER_LOW;
 
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.zu.ardulink.Link;
 import org.zu.ardulink.event.AnalogReadChangeEvent;
@@ -15,13 +16,75 @@ import org.zu.ardulink.event.DigitalReadChangeListener;
 
 public abstract class AbstractMqttAdapter {
 
+	public interface Handler {
+		boolean handle(String topic, String message);
+	}
+
+	private static class DigitalHandler implements Handler {
+
+		private final Link link;
+		private final Pattern pattern;
+
+		public DigitalHandler(Link link, Config config) {
+			this.link = link;
+			this.pattern = config.getTopicPatternDigitalWrite();
+		}
+
+		@Override
+		public boolean handle(String topic, String message) {
+			Matcher matcher = pattern.matcher(topic);
+			if (matcher.matches()) {
+				Integer pin = tryParse(matcher.group(1));
+				if (pin != null) {
+					boolean state = parseBoolean(message);
+					this.link.sendPowerPinSwitch(pin.intValue(),
+							state ? POWER_HIGH : POWER_LOW);
+					return true;
+				}
+			}
+			return false;
+		}
+
+	}
+
+	private static class AnalogHandler implements Handler {
+
+		private final Link link;
+		private final Pattern pattern;
+
+		public AnalogHandler(Link link, Config config) {
+			this.link = link;
+			this.pattern = config.getTopicPatternAnalogWrite();
+		}
+
+		@Override
+		public boolean handle(String topic, String message) {
+			Matcher matcher = pattern.matcher(topic);
+			if (matcher.matches()) {
+				Integer pin = tryParse(matcher.group(1));
+				Integer intensity = tryParse(message);
+				if (pin != null && intensity != null) {
+					this.link.sendPowerPinIntensity(pin.intValue(),
+							intensity.intValue());
+					return true;
+				}
+			}
+			return false;
+		}
+
+	}
+
 	private final Link link;
 
 	private final Config config;
 
+	private final Handler[] handlers;
+
 	public AbstractMqttAdapter(Link link, Config config) {
 		this.link = link;
 		this.config = config;
+		this.handlers = new Handler[] { new DigitalHandler(link, config),
+				new AnalogHandler(link, config) };
 	}
 
 	/**
@@ -34,39 +97,11 @@ public abstract class AbstractMqttAdapter {
 	 *            the payload
 	 */
 	public void toArduino(String topic, String message) {
-		if (!handleDigital(topic, message)) {
-			handleAnalog(topic, message);
-		}
-	}
-
-	private boolean handleDigital(String topic, String message) {
-		Matcher matcher = this.config.getTopicPatternDigitalWrite().matcher(
-				topic);
-		if (matcher.matches()) {
-			Integer pin = tryParse(matcher.group(1));
-			if (pin != null) {
-				boolean state = parseBoolean(message);
-				this.link.sendPowerPinSwitch(pin.intValue(), state ? POWER_HIGH
-						: POWER_LOW);
-				return true;
+		for (Handler handler : handlers) {
+			if (handler.handle(topic, message)) {
+				return;
 			}
 		}
-		return false;
-	}
-
-	private boolean handleAnalog(String topic, String message) {
-		Matcher matcher = this.config.getTopicPatternAnalogWrite().matcher(
-				topic);
-		if (matcher.matches()) {
-			Integer pin = tryParse(matcher.group(1));
-			Integer intensity = tryParse(message);
-			if (pin != null && intensity != null) {
-				this.link.sendPowerPinIntensity(pin.intValue(),
-						intensity.intValue());
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private static Integer tryParse(String string) {
