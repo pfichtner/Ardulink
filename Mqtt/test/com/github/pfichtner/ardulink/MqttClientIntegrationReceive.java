@@ -6,7 +6,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -19,7 +18,6 @@ import org.dna.mqtt.moquette.server.Server;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttSecurityException;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.zu.ardulink.Link;
 
 import com.github.pfichtner.ardulink.util.AnotherMqttClient;
@@ -34,6 +32,7 @@ public class MqttClientIntegrationReceive {
 		when(mock.getPortList()).thenReturn(singletonList("/dev/null"));
 		when(mock.connect("/dev/null", 115200)).thenReturn(true);
 	}
+
 	private MqttMain client = new MqttMain() {
 		@Override
 		protected Link createLink() {
@@ -60,6 +59,7 @@ public class MqttClientIntegrationReceive {
 				startClientInBackground(exceptions, client, TOPIC);
 				amc.switchDigitalPin(pin, true);
 			} finally {
+				client.close();
 				amc.disconnect();
 			}
 		} finally {
@@ -70,6 +70,7 @@ public class MqttClientIntegrationReceive {
 		verify(mock).getPortList();
 		verify(mock).connect("/dev/null", 115200);
 		verify(mock).sendPowerPinSwitch(pin, 1);
+		verify(mock).disconnect();
 		verifyNoMoreInteractions(mock);
 	}
 
@@ -91,6 +92,7 @@ public class MqttClientIntegrationReceive {
 				startClientInBackground(exceptions, client, TOPIC);
 				amc.switchAnalogPin(pin, value);
 			} finally {
+				client.close();
 				amc.disconnect();
 			}
 		} finally {
@@ -101,10 +103,11 @@ public class MqttClientIntegrationReceive {
 		verify(mock).getPortList();
 		verify(mock).connect("/dev/null", 115200);
 		verify(mock).sendPowerPinIntensity(pin, value);
+		verify(mock).disconnect();
 		verifyNoMoreInteractions(mock);
 	}
 
-	private Server startBroker() throws IOException {
+	private Server startBroker() throws IOException, InterruptedException {
 		Server broker = new Server();
 		broker.startServer();
 		return broker;

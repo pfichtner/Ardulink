@@ -10,10 +10,12 @@
 	</parent>
 
 	<repositories>
+		<!-- org.eclipse.paho:mqtt-client -->
 		<repository>
 			<id>Eclipse Paho Repo</id>
 			<url>https://repo.eclipse.org/content/repositories/paho-releases/</url>
 		</repository>
+		<!-- org.dna.mqtt:moquette-broker -->
 		<repository>
 			<id>bintray</id>
 			<url>http://dl.bintray.com/andsel/maven/</url>

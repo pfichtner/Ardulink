@@ -19,6 +19,7 @@ import java.util.List;
 import org.dna.mqtt.moquette.server.Server;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttSecurityException;
+import org.junit.After;
 import org.junit.Test;
 import org.zu.ardulink.ConnectionContactImpl;
 import org.zu.ardulink.Link;
@@ -51,6 +52,12 @@ public class MqttClientIntegrationSend {
 		set(link, getField(link, "connectionContact"), connectionContact);
 
 	}
+
+	@After
+	public void tearDown() throws InterruptedException, MqttException {
+		Link.destroyInstance(LINKNAME);
+	}
+
 	private MqttMain client = new MqttMain() {
 		@Override
 		protected Link createLink() {
@@ -79,6 +86,7 @@ public class MqttClientIntegrationSend {
 				simulateArduinoToMqtt(arduinoCommand("dred").forPin(pin)
 						.withValue(1));
 			} finally {
+				client.close();
 				amc.disconnect();
 			}
 		} finally {
@@ -113,6 +121,7 @@ public class MqttClientIntegrationSend {
 				simulateArduinoToMqtt(arduinoCommand("ared").forPin(pin)
 						.withValue(value));
 			} finally {
+				client.close();
 				amc.disconnect();
 			}
 		} finally {
@@ -132,7 +141,7 @@ public class MqttClientIntegrationSend {
 		connectionContact.parseInput("someId", codepoints.length, codepoints);
 	}
 
-	private Server startBroker() throws IOException {
+	private Server startBroker() throws IOException, InterruptedException {
 		Server broker = new Server();
 		broker.startServer();
 		return broker;

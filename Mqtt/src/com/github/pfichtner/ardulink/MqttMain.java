@@ -49,6 +49,8 @@ public class MqttMain {
 
 	private MqttClient mqttClient;
 
+	private Link link;
+
 	private class MqttClient extends AbstractMqttAdapter {
 
 		private static final boolean RETAINED = true;
@@ -177,15 +179,20 @@ public class MqttMain {
 		try {
 			wait4ever();
 		} finally {
-			mqttClient.close();
+			close();
 		}
 
 	}
 
+	public void close() throws MqttException {
+		link.disconnect();
+		mqttClient.close();
+	}
+
 	protected void createClient() throws MqttSecurityException, MqttException,
 			InterruptedException {
-		mqttClient = new MqttClient(connect(createLink()),
-				Config.withTopic(this.brokerTopic));
+		link = connect(createLink());
+		mqttClient = new MqttClient(link, Config.withTopic(this.brokerTopic));
 	}
 
 	private Link connect(Link link) throws InterruptedException {
