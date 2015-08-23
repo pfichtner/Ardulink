@@ -60,12 +60,6 @@ public class MqttMain {
 		private MqttClient(Link link, Config config)
 				throws MqttSecurityException, MqttException {
 			super(link, config);
-			for (int analogPin : analogs) {
-				enableAnalogPinChangeEvents(analogPin);
-			}
-			for (int digitalPin : digitals) {
-				enableDigitalPinChangeEvents(digitalPin);
-			}
 			this.client = newClient(brokerHost, brokerPort, clientId);
 			this.client.setCallback(new MqttCallback() {
 				public void connectionLost(Throwable cause) {
@@ -96,6 +90,12 @@ public class MqttMain {
 			});
 			connect();
 			subscribe();
+			for (int analogPin : analogs) {
+				enableAnalogPinChangeEvents(analogPin);
+			}
+			for (int digitalPin : digitals) {
+				enableDigitalPinChangeEvents(digitalPin);
+			}
 		}
 
 		@Override
