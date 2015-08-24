@@ -20,8 +20,8 @@ public class AnotherMqttClient {
 	public AnotherMqttClient(String topic) throws MqttSecurityException,
 			MqttException {
 		this.topic = topic;
-		mqttClient = mqttClient();
-		mqttClient.setCallback(new MqttCallback() {
+		this.mqttClient = mqttClient();
+		this.mqttClient.setCallback(new MqttCallback() {
 
 			@Override
 			public void messageArrived(String topic, MqttMessage message)
@@ -68,7 +68,7 @@ public class AnotherMqttClient {
 	}
 
 	private MqttMessageBuilder newMsgBuilder() {
-		return MqttMessageBuilder.messageWithBasicTopic(topic);
+		return MqttMessageBuilder.mqttMessageWithBasicTopic(topic);
 	}
 
 	private void sendMessage(Message msg) throws MqttException,

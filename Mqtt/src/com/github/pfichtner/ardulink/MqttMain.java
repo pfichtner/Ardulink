@@ -23,7 +23,7 @@ import org.zu.ardulink.connection.proxy.NetworkProxyConnection;
 
 public class MqttMain {
 
-	@Option(name = "-brokerTopic", usage = "Topic to register. To switch outlets a message of the form $brokerTopic/$enumeratedName$NUM/value/set must be sent")
+	@Option(name = "-brokerTopic", usage = "Topic to register. To switch pins a message of the form $brokerTopic/[A|D]$pinNumber/value/set must be sent. A for analog pins, D for digital pins")
 	private String brokerTopic = Config.DEFAULT_TOPIC;
 
 	@Option(name = "-brokerHost", usage = "Hostname of the broker to connect to")
@@ -47,7 +47,7 @@ public class MqttMain {
 	@Option(name = "-at", aliases = "--tolerance", usage = "Analog tolerance, publich only changes exceeding this value")
 	private int tolerance = 3;
 
-	@Option(name = "-remote", usage = "Host and port of a remote arduino")
+	@Option(name = "-remote", usage = "Host (and optional port) of a remote ardulink arduino")
 	private String remote;
 
 	private MqttClient mqttClient;
@@ -101,6 +101,13 @@ public class MqttMain {
 			}
 		}
 
+		private org.eclipse.paho.client.mqttv3.MqttClient newClient(
+				String host, int port, String clientId) throws MqttException,
+				MqttSecurityException {
+			return new org.eclipse.paho.client.mqttv3.MqttClient("tcp://"
+					+ host + ":" + port, clientId);
+		}
+
 		@Override
 		public void fromArduino(String topic, String message) {
 			try {
@@ -122,8 +129,11 @@ public class MqttMain {
 		}
 
 		public void close() throws MqttException {
-			client.disconnect();
-			client.close();
+			// "kill" the callback since it retries to reconnect
+			this.client.setCallback(null);
+			publishClientStatus(FALSE);
+			this.client.disconnect();
+			this.client.close();
 		}
 
 		private MqttConnectOptions mqttConnectOptions() {
@@ -187,18 +197,13 @@ public class MqttMain {
 
 	}
 
-	public void close() throws MqttException {
-		link.disconnect();
-		mqttClient.close();
-	}
-
-	protected void createClient() throws MqttSecurityException, MqttException,
+	private void createClient() throws MqttSecurityException, MqttException,
 			InterruptedException {
-		link = connect(createLink());
+		this.link = connect(createLink());
 		mqttClient = new MqttClient(link, Config.withTopic(this.brokerTopic));
 	}
 
-	private Link connect(Link link) throws InterruptedException {
+	private static Link connect(Link link) throws InterruptedException {
 		List<String> portList = link.getPortList();
 		if (portList == null || portList.isEmpty()) {
 			throw new RuntimeException("No port found!");
@@ -210,18 +215,12 @@ public class MqttMain {
 		return link;
 	}
 
-	private org.eclipse.paho.client.mqttv3.MqttClient newClient(String host,
-			int port, String clientId) throws MqttException,
-			MqttSecurityException {
-		return new org.eclipse.paho.client.mqttv3.MqttClient("tcp://" + host
-				+ ":" + port, clientId);
+	protected Link createLink() {
+		return this.remote == null || this.remote.isEmpty() ? Link
+				.getDefaultInstance() : createRemoteLink(this.remote);
 	}
 
-	protected Link createLink() {
-		if (remote == null || remote.isEmpty()) {
-			return Link.getDefaultInstance();
-		}
-
+	private static Link createRemoteLink(String remote) {
 		String[] hostAndPort = remote.split("\\:");
 		try {
 			int port = hostAndPort.length == 1 ? DEFAULT_LISTENING_PORT
@@ -231,6 +230,15 @@ public class MqttMain {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public boolean isConnected() {
+		return this.mqttClient != null && this.mqttClient.isConnected();
+	}
+
+	public void close() throws MqttException {
+		this.link.disconnect();
+		this.mqttClient.close();
 	}
 
 	public void setBrokerTopic(String brokerTopic) {
@@ -244,10 +252,6 @@ public class MqttMain {
 
 	public void setDigitals(int... digitals) {
 		this.digitals = digitals == null ? new int[0] : digitals.clone();
-	}
-
-	public boolean isConnected() {
-		return mqttClient != null && mqttClient.isConnected();
 	}
 
 	private static void wait4ever() throws InterruptedException {

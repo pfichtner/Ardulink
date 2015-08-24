@@ -21,6 +21,9 @@ public abstract class AbstractMqttAdapter {
 		boolean handle(String topic, String message);
 	}
 
+	/**
+	 * Does handle mqtt messages for digital pins.
+	 */
 	private static class DigitalHandler implements Handler {
 
 		private final Link link;
@@ -48,6 +51,9 @@ public abstract class AbstractMqttAdapter {
 
 	}
 
+	/**
+	 * Does handle mqtt messages for analog pins.
+	 */
 	private static class AnalogHandler implements Handler {
 
 		private final Link link;
@@ -82,14 +88,18 @@ public abstract class AbstractMqttAdapter {
 	private final Handler[] handlers;
 
 	public AbstractMqttAdapter(Link link, Config config) {
+		this(link, config, new Handler[] { new DigitalHandler(link, config),
+				new AnalogHandler(link, config) });
+	}
+
+	public AbstractMqttAdapter(Link link, Config config, Handler[] handlers) {
 		this.link = link;
 		this.config = config;
-		this.handlers = new Handler[] { new DigitalHandler(link, config),
-				new AnalogHandler(link, config) };
+		this.handlers = handlers.clone();
 	}
 
 	/**
-	 * This method should be called by the publisher when a new message has
+	 * This method should be called by the publisher when a new mqtt message has
 	 * arrived.
 	 * 
 	 * @param topic
@@ -98,7 +108,7 @@ public abstract class AbstractMqttAdapter {
 	 *            the payload
 	 */
 	public void toArduino(String topic, String message) {
-		for (Handler handler : handlers) {
+		for (Handler handler : this.handlers) {
 			if (handler.handle(topic, message)) {
 				return;
 			}
@@ -114,11 +124,12 @@ public abstract class AbstractMqttAdapter {
 	}
 
 	public void enableDigitalPinChangeEvents(final int pin) {
-		link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
+		this.link.addDigitalReadChangeListener(new DigitalReadChangeListener() {
 			@Override
 			public void stateChanged(DigitalReadChangeEvent e) {
 				fromArduino(
-						format(config.getTopicPatternDigitalRead(), e.getPin()),
+						format(AbstractMqttAdapter.this.config
+								.getTopicPatternDigitalRead(), e.getPin()),
 						String.valueOf(e.getValue()));
 			}
 
@@ -131,7 +142,7 @@ public abstract class AbstractMqttAdapter {
 
 	public void enableAnalogPinChangeEvents(final int pin, final int tolerance) {
 		AnalogReadChangeListener delegate = newAnalogReadChangeListener(pin);
-		link.addAnalogReadChangeListener(tolerance == 0 ? delegate
+		this.link.addAnalogReadChangeListener(tolerance == 0 ? delegate
 				: toleranceAdapter(tolerance, delegate));
 	}
 
@@ -139,16 +150,21 @@ public abstract class AbstractMqttAdapter {
 			final int tolerance, final AnalogReadChangeListener delegate) {
 		return new AnalogReadChangeListener() {
 
-			private Integer value;
+			private Integer cachedValue;
 
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
 				int newValue = e.getValue();
-				if (this.value == null
-						|| abs(this.value.intValue() - newValue) > tolerance) {
-					this.value = Integer.valueOf(newValue);
+				if (this.cachedValue == null
+						|| abs(this.cachedValue.intValue() - newValue) > tolerance
+						|| isHighOrLowValue(newValue)) {
+					this.cachedValue = Integer.valueOf(newValue);
 					delegate.stateChanged(e);
 				}
+			}
+
+			private boolean isHighOrLowValue(int value) {
+				return value == 0 || value == 255;
 			}
 
 			@Override
@@ -159,7 +175,7 @@ public abstract class AbstractMqttAdapter {
 	}
 
 	public void enableAnalogPinChangeEvents(final int pin) {
-		link.addAnalogReadChangeListener(newAnalogReadChangeListener(pin));
+		this.link.addAnalogReadChangeListener(newAnalogReadChangeListener(pin));
 	}
 
 	private AnalogReadChangeListener newAnalogReadChangeListener(final int pin) {
@@ -167,8 +183,9 @@ public abstract class AbstractMqttAdapter {
 			@Override
 			public void stateChanged(AnalogReadChangeEvent e) {
 				fromArduino(
-						format(config.getTopicPatternAnalogRead(), e.getPin()),
-						String.valueOf(e.getValue()));
+						format(AbstractMqttAdapter.this.config
+								.getTopicPatternAnalogRead(),
+								e.getPin()), String.valueOf(e.getValue()));
 			}
 
 			@Override
@@ -178,6 +195,15 @@ public abstract class AbstractMqttAdapter {
 		};
 	}
 
+	/**
+	 * Called when a message from arduino (ardulink) is received and should be
+	 * published to the mqtt broker.
+	 * 
+	 * @param topic
+	 *            the message's topic
+	 * @param message
+	 *            the payload
+	 */
 	abstract void fromArduino(String topic, String message);
 
 }

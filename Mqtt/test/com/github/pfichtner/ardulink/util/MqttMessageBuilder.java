@@ -9,7 +9,7 @@ public class MqttMessageBuilder {
 	private String type;
 	private Object value;
 
-	public static MqttMessageBuilder messageWithBasicTopic(String basicTopic) {
+	public static MqttMessageBuilder mqttMessageWithBasicTopic(String basicTopic) {
 		return new MqttMessageBuilder(basicTopic);
 	}
 

@@ -2,10 +2,12 @@ package com.github.pfichtner.ardulink.util;
 
 import static java.util.Collections.singletonList;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.List;
 
+import org.dna.mqtt.moquette.server.Server;
 import org.zu.ardulink.connection.Connection;
 import org.zu.ardulink.connection.ConnectionContact;
 import org.zu.ardulink.connection.serial.AbstractSerialConnection;
@@ -70,6 +72,12 @@ public final class TestUtil {
 		} catch (IllegalAccessException e) {
 			throw new IllegalStateException(e);
 		}
+	}
+
+	public static Server startBroker() throws IOException, InterruptedException {
+		Server broker = new Server();
+		broker.startServer();
+		return broker;
 	}
 
 }
