@@ -18,9 +18,6 @@ limitations under the License.
 
 package org.zu.ardulink.gui.facility;
 
-import javax.swing.ComboBoxModel;
-import javax.swing.DefaultComboBoxModel;
-
 /**
  * [ardulinktitle] [ardulinkversion] This class has utility methods for GUI
  * components
@@ -37,30 +34,25 @@ public final class UtilityModel {
 	}
 
 	/**
-	 * Generate a ComboBoxModel containing all ints between a given range. i.e.
+	 * Generate a String array containing all string between a given range. i.e.
 	 * 
-	 * generateModelForCombo(2,4) generates a ComboBoxModel containing {2,3,4}
+	 * generateModelForCombo(2,4) generates {"2", "3", "4"}
 	 * 
 	 * @param minValue
-	 *            start value
 	 * @param maxValue
-	 *            end value
-	 * @return new ComboBoxModel
+	 * @return the string array
 	 */
-	public static ComboBoxModel<Integer> generateModelForCombo(int minValue,
-			int maxValue) {
-		return new DefaultComboBoxModel<Integer>(values(minValue, maxValue));
-	}
+	public static String[] generateModelForCombo(int minValue, int maxValue) {
 
-	private static Integer[] values(int minValue, int maxValue) {
 		if (minValue >= maxValue) {
-			return new Integer[] { maxValue };
+			return new String[] { String.valueOf(maxValue) };
 		}
-		Integer[] values = new Integer[maxValue - minValue + 1];
-		for (int i = 0; i < values.length; i++) {
-			values[i] = i + minValue;
+		String[] retvalue = new String[maxValue - minValue + 1];
+		for (int i = 0; i < retvalue.length; i++) {
+			retvalue[i] = String.valueOf(i + minValue);
 		}
-		return values;
+		return retvalue;
+
 	}
 
 }
