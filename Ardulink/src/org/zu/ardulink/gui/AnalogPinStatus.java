@@ -39,7 +39,7 @@ import javax.swing.SwingConstants;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.event.AnalogReadChangeEvent;
 import org.zu.ardulink.event.AnalogReadChangeListener;
-import org.zu.ardulink.gui.facility.IntMinMaxModel;
+import org.zu.ardulink.gui.facility.UtilityModel;
 import org.zu.ardulink.protocol.ReplyMessageCallback;
 
 /**
@@ -59,17 +59,14 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 	private JLabel valueLabel;
 	private JLabel voltValueLbl;
 	private JProgressBar progressBar;
-	private JComboBox<Integer> minValueComboBox;
-	private IntMinMaxModel minValueComboBoxModel;
-	private JComboBox<Integer> maxValueComboBox;
-	private IntMinMaxModel maxValueComboBoxModel;
-	private JComboBox<Integer> pinComboBox;
-	private IntMinMaxModel pinComboBoxModel;
+	private JComboBox<String> maxValueComboBox;
+	private JComboBox<String> minValueComboBox;
+	private JComboBox<String> pinComboBox;
 	private JLabel lblPowerPinController;
 	private JToggleButton tglbtnSensor;
 
 	private Link link = Link.getDefaultInstance();
-
+	
 	/**
 	 * Create the panel.
 	 */
@@ -84,20 +81,24 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 		
 		// TODO definire un metodo per poter cambiare l'insieme dei pin controllabili. In questo modo si può lavorare anche con schede diverse da Arduino UNO
 		// pinComboBox.setModel(new DefaultComboBoxModel(new String[] {"3", "5", "6", "9", "10", "11"}));
-		pinComboBoxModel = new IntMinMaxModel(0, 40);
-		pinComboBox = new JComboBox<Integer>(pinComboBoxModel);
-		pinComboBox.setSelectedItem(Integer.valueOf(0));
+		pinComboBox = new JComboBox<String>(new DefaultComboBoxModel<String>(
+				UtilityModel.generateModelForCombo(0, 40)));
+		pinComboBox.setSelectedItem("0");
 		pinComboBox.setBounds(65, 36, 62, 22);
 		add(pinComboBox);
 		
-		maxValueComboBoxModel = new IntMinMaxModel(0, 1023).withLastItemSelected();
-		maxValueComboBox = new JComboBox<Integer>(maxValueComboBoxModel);
+		maxValueComboBox = new JComboBox<String>(
+				new DefaultComboBoxModel<String>(
+						UtilityModel.generateModelForCombo(0, 1023)));
 		maxValueComboBox.setBounds(65, 65, 62, 22);
+		maxValueComboBox.setSelectedItem("1023");
 		add(maxValueComboBox);
 
-		minValueComboBoxModel = new IntMinMaxModel(0, 1023).withFirstItemSelected();
-		minValueComboBox = new JComboBox<Integer>(minValueComboBoxModel);
+		minValueComboBox = new JComboBox<String>(
+				new DefaultComboBoxModel<String>(
+						UtilityModel.generateModelForCombo(0, 1023)));
 		minValueComboBox.setBounds(65, 217, 62, 22);
+		minValueComboBox.setSelectedItem("0");
 		add(minValueComboBox);
 		
 		JLabel lblMaxValue = new JLabel("Max Value:");
@@ -180,9 +181,10 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 				int minimum = getMinValue();
 				
 				if(minimum > maximum) {
-					minValueComboBoxModel.setSelectedItem(maximum);
+					minimum = maximum;
+					minValueComboBox.setSelectedItem("" + minimum);
 				}
-				updateValue();
+				updateVale();
 			}
 		});
 
@@ -192,9 +194,11 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 				int minimum = getMinValue();
 
 				if(minimum > maximum) {
-					maxValueComboBoxModel.setSelectedItem(minimum);
+					maximum = minimum;
+					maxValueComboBox.setSelectedItem("" + maximum);
 				}
-				updateValue();
+				
+				updateVale();
 			}
 
 		});
@@ -206,7 +210,7 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 	 * @param pin
 	 */
 	public void setPin(int pin) {
-		pinComboBoxModel.setSelectedItem(pin);
+		pinComboBox.setSelectedItem("" + pin);
 	}
 
 	public void setLink(Link link) {
@@ -235,14 +239,14 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 	}
 
 	public int getMinValue() {
-		return minValueComboBoxModel.getSelectedItem().intValue();
+		return Integer.parseInt((String)minValueComboBox.getSelectedItem());
 	}
 	
 	public int getMaxValue() {
-		return maxValueComboBoxModel.getSelectedItem().intValue();
+		return Integer.parseInt((String)maxValueComboBox.getSelectedItem());
 	}
 	
-	private void updateValue() {
+	private void updateVale() {
 		setValue(getValue());
 	}
 
@@ -261,6 +265,6 @@ public class AnalogPinStatus extends JPanel implements Linkable, AnalogReadChang
 
 	@Override
 	public int getPinListening() {
-		return pinComboBoxModel.getSelectedItem().intValue();
+		return Integer.parseInt(((String)pinComboBox.getSelectedItem()));
 	}
 }
