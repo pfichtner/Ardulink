@@ -40,7 +40,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 
 import org.zu.ardulink.Link;
-import org.zu.ardulink.gui.facility.IntMinMaxModel;
+import org.zu.ardulink.gui.facility.UtilityModel;
 import org.zu.ardulink.protocol.ReplyMessageCallback;
 
 public class ToneController extends JPanel implements Linkable {
@@ -62,10 +62,9 @@ public class ToneController extends JPanel implements Linkable {
 	private String toneButtonOnText = "On";
 	private String toneButtonOffText = "Off";
 	private JCheckBox durationCheckBox;
-	private IntMinMaxModel pinComboBoxModel;
+	private JComboBox<Integer> pinComboBox;
 	private JLabel pinLabel;
 	private JPanel pinPanel;
-
 	
 	/**
 	 * Create the valuePanelOff.
@@ -86,8 +85,7 @@ public class ToneController extends JPanel implements Linkable {
 		pinPanel.add(pinLabel);
 		pinLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
 		
-		pinComboBoxModel = new IntMinMaxModel(0, 40);
-		JComboBox<Integer> pinComboBox = new JComboBox<Integer>(pinComboBoxModel);
+		pinComboBox = new JComboBox<Integer>(UtilityModel.generateModelForCombo(0, 40));
 		pinPanel.add(pinComboBox);
 		
 		frequencyPanel = new JPanel();
@@ -136,18 +134,21 @@ public class ToneController extends JPanel implements Linkable {
 		toneButton = new JToggleButton("Off");
 		toneButton.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				int pin = pinComboBoxModel.getSelectedItem().intValue();
+				int pin = ((Integer)pinComboBox.getSelectedItem()).intValue();
 				if(e.getStateChange() == ItemEvent.SELECTED) {
-					Integer value = (Integer) frequencySpinner.getValue();
-					if (durationCheckBox.isSelected()) {
-						link.sendToneMessage(pin, value,
-								(Integer) durationSpinner.getValue());
+					
+					if(durationCheckBox.isSelected()) {
+						link.sendToneMessage(pin, (Integer)frequencySpinner.getValue(), (Integer)durationSpinner.getValue());
 					} else {
-						link.sendToneMessage(pin, value);
+						link.sendToneMessage(pin, (Integer)frequencySpinner.getValue());
 					}
+					
 					updateToneButtonText();
+					
 				} else if(e.getStateChange() == ItemEvent.DESELECTED) {
+
 					link.sendNoToneMessage(pin);
+					
 					updateToneButtonText();
 				}
 			}

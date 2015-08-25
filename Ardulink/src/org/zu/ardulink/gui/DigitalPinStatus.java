@@ -32,7 +32,7 @@ import javax.swing.SwingConstants;
 import org.zu.ardulink.Link;
 import org.zu.ardulink.event.DigitalReadChangeEvent;
 import org.zu.ardulink.event.DigitalReadChangeListener;
-import org.zu.ardulink.gui.facility.IntMinMaxModel;
+import org.zu.ardulink.gui.facility.UtilityModel;
 import org.zu.ardulink.protocol.ReplyMessageCallback;
 
 /**
@@ -52,7 +52,6 @@ public class DigitalPinStatus extends JPanel implements DigitalReadChangeListene
 	private JLabel lblStatelabel;
 	private JToggleButton tglbtnSensor;
 	private JComboBox<Integer> pinComboBox;
-	private IntMinMaxModel pinComboBoxModel;
 	private JLabel lblPin;
 	
 	private Link link = Link.getDefaultInstance();
@@ -66,7 +65,6 @@ public class DigitalPinStatus extends JPanel implements DigitalReadChangeListene
 	private static final ImageIcon HIGH_ICON = new ImageIcon(DigitalPinStatus.class.getResource(HIGH_ICON_NAME));
 	private static final ImageIcon LOW_ICON = new ImageIcon(DigitalPinStatus.class.getResource(LOW_ICON_NAME));
 	private JPanel comboPanel;
-
 
 	/**
 	 * Create the panel.
@@ -86,8 +84,7 @@ public class DigitalPinStatus extends JPanel implements DigitalReadChangeListene
 		lblPin = new JLabel("Pin:");
 		comboPanel.add(lblPin);
 		
-		pinComboBoxModel = new IntMinMaxModel(2, 40);
-		pinComboBox = new JComboBox<Integer>(pinComboBoxModel);
+		pinComboBox = new JComboBox<Integer>(UtilityModel.generateModelForCombo(2, 40));
 		comboPanel.add(pinComboBox);
 		
 		tglbtnSensor = new JToggleButton("Sensor off");
@@ -129,11 +126,11 @@ public class DigitalPinStatus extends JPanel implements DigitalReadChangeListene
 
 	@Override
 	public int getPinListening() {
-		return pinComboBoxModel.getSelectedItem().intValue();
+		return ((Integer) pinComboBox.getSelectedItem()).intValue();
 	}
 
 	public void setPin(int pin) {
-		pinComboBoxModel.setSelectedItem(pin);
+		pinComboBox.setSelectedItem(Integer.valueOf(pin));
 	}
 
 	public void setLink(Link link) {
