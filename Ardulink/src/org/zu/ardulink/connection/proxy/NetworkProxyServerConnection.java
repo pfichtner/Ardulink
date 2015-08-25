@@ -25,6 +25,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -119,8 +120,9 @@ public class NetworkProxyServerConnection implements Runnable, NetworkProxyMessa
 				printWriter.println(NUMBER_OF_PORTS + "0");
 			} else {
 				printWriter.println(NUMBER_OF_PORTS + portList.size());
-				for (String port : portList) {
-					printWriter.println(port);
+				Iterator<String> it = portList.iterator();
+				while(it.hasNext()) {
+					printWriter.println(it.next());
 				}
 			}
 			printWriter.flush();

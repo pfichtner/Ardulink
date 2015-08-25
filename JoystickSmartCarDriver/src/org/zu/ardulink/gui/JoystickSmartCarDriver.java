@@ -22,6 +22,7 @@ import java.awt.BorderLayout;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -146,8 +147,9 @@ public class JoystickSmartCarDriver extends JFrame implements ConnectionListener
 		} else {
 			disconnected(new DisconnectionEvent());
 		}
-		for (Linkable linkable : linkables) {
-			linkable.setLink(link);
+		Iterator<Linkable> it = linkables.iterator();
+		while(it.hasNext()) {
+			it.next().setLink(link);
 		}
 	}
 
